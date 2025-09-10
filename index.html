@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Steem Network Visualization</title>
+        <meta name="Description" content="Map domains and their IP addresses to hexasphere tiles" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background: #000011;
+                overflow: hidden;
+                font-family: Arial, sans-serif;
+            }
+            canvas {
+                display: block;
+            }
+            
+            .domain-panel {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 20px;
+                border-radius: 10px;
+                color: white;
+                font-family: Arial, sans-serif;
+                width: 320px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                z-index: 1000;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+            
+            .domain-input {
+                width: 100%;
+                padding: 8px;
+                margin: 5px 0;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+                font-size: 14px;
+            }
+            
+            .domain-input::placeholder {
+                color: rgba(255, 255, 255, 0.6);
+            }
+            
+            .btn {
+                background: linear-gradient(45deg, #4FC3F7, #29B6F6);
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin: 5px 5px 5px 0;
+                font-size: 12px;
+            }
+            
+            .btn:hover {
+                background: linear-gradient(45deg, #29B6F6, #4FC3F7);
+            }
+            
+            .btn:disabled {
+                background: #555;
+                cursor: not-allowed;
+            }
+            
+            .domain-list {
+                max-height: 200px;
+                overflow-y: auto;
+                margin: 10px 0;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 5px;
+            }
+            
+            .domain-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 5px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                font-size: 12px;
+            }
+            
+            .domain-item:last-child {
+                border-bottom: none;
+            }
+            
+            .domain-name {
+                color: #4FC3F7;
+                font-weight: bold;
+            }
+            
+            .domain-ip {
+                color: #ccc;
+                font-family: monospace;
+            }
+            
+            .domain-status {
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            
+            .status-pending { background: #ff9800; }
+            .status-success { background: #4caf50; }
+            .status-error { background: #f44336; }
+            
+            .info-panel {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 20px;
+                border-radius: 10px;
+                color: white;
+                font-family: Arial, sans-serif;
+                width: 250px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                z-index: 1000;
+            }
+            
+            .legend {
+                margin-top: 15px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin: 5px 0;
+                font-size: 12px;
+            }
+            
+            .legend-color {
+                width: 15px;
+                height: 15px;
+                border-radius: 3px;
+                margin-right: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <img id="projection" src="equirectangle_projection.png" style="display: none;" />
+
+        <!-- Domain Input Panel -->
+        <div class="domain-panel">
+            <h3 style="margin: 0 0 15px 0; color: #4FC3F7;">🌐 Steem Network Mapper</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #ccc;">
+                    Add Domain:
+                </label>
+                <input type="text" id="domainInput" class="domain-input" placeholder="Enter domain (e.g., seed.symbionts.io)" />
+                <button id="addDomainBtn" class="btn">Add Domain</button>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #ccc;">
+                    Bulk Import (one per line):
+                </label>
+                <textarea id="bulkDomainInput" class="domain-input" rows="4" placeholder="seed.symbionts.io&#10;seed.steemworld.org&#10;seed.steemchat.org"></textarea>
+                <button id="bulkAddBtn" class="btn">Add All</button>
+                <button id="clearAllBtn" class="btn" style="background: linear-gradient(45deg, #f44336, #d32f2f);">Clear All</button>
+            </div>
+            
+            <button id="resolveDomainBtn" class="btn" style="width: 100%; margin-top: 10px;">🔍 Resolve All Domains</button>
+            <button id="mapToTilesBtn" class="btn" style="width: 100%; margin-top: 5px;" disabled>📍 Map to Tiles</button>
+            
+            <div style="display: flex; gap: 5px; margin-top: 10px;">
+                <button id="saveMappingBtn" class="btn" style="flex: 1; background: linear-gradient(45deg, #4caf50, #45a049);">💾 Save</button>
+                <button id="loadMappingBtn" class="btn" style="flex: 1; background: linear-gradient(45deg, #ff9800, #f57c00);">📂 Load</button>
+            </div>
+            <button id="loadExistingBtn" class="btn" style="width: 100%; margin-top: 5px; background: linear-gradient(45deg, #9c27b0, #7b1fa2);">📋 Load domain-mapping.json</button>
+            <input type="file" id="loadFileInput" accept=".json" style="display: none;">
+            
+            <div class="domain-list" id="domainList">
+                <p style="color: #666; text-align: center; margin: 20px 0;">No domains added yet</p>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <h4 style="margin: 0 0 10px 0; color: #4FC3F7;">Network Visualization</h4>
+            <p style="font-size: 12px; color: #ccc; margin: 0 0 10px 0;">
+                Map Steem seed nodes to hexasphere tiles based on their IP addresses and locations.
+            </p>
+            
+            <div style="margin: 10px 0;">
+                <p style="font-size: 12px; margin: 5px 0;"><strong>Nodes:</strong> <span id="domainCount">0</span></p>
+                <p style="font-size: 12px; margin: 5px 0;"><strong>Resolved:</strong> <span id="resolvedCount">0</span></p>
+                <p style="font-size: 12px; margin: 5px 0;"><strong>Mapped:</strong> <span id="mappedCount">0</span></p>
+            </div>
+            
+            <div class="legend">
+                <h5 style="margin: 15px 0 10px 0; color: #4FC3F7;">Legend:</h5>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4FC3F7;"></div>
+                    <span>Seed Nodes</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>Selected Domain</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4caf50;"></div>
+                    <span>Connected Nodes</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; font-size: 11px; color: #666;">
+                <p>Click on a domain tile to see details. Drag to rotate, scroll to zoom.</p>
+                <p><strong>Keyboard shortcuts:</strong></p>
+                <p>• Ctrl+S: Save mapping</p>
+                <p>• Ctrl+O: Load mapping</p>
+            </div>
+        </div>
+
+        <script type="module" src="domain-mapper.js"></script>
+    </body>
+</html>

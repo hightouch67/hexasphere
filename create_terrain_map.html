@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Terrain Map Generator</title>
+</head>
+<body>
+    <h2>Fictional World Generator</h2>
+    <canvas id="terrainCanvas" width="800" height="400" style="border: 1px solid black;"></canvas>
+    <br><br>
+    <button onclick="generateTerrain()">Generate Random World</button>
+    <button onclick="generateIslandWorld()">Generate Island World</button>
+    <button onclick="generateContinentalWorld()">Generate Continental World</button>
+    <button onclick="generateAlienWorld()">Generate Alien World</button>
+    <button onclick="downloadMap()">Download Map</button>
+    
+    <div>
+        <label>World Seed: <input type="number" id="seedInput" value="12345" onchange="updateSeed()"></label>
+        <button onclick="randomSeed()">Random Seed</button>
+    </div>
+    
+    <div style="margin: 10px 0;">
+        <label>
+            <input type="checkbox" id="dataMode" onchange="regenerateCurrentWorld()"> 
+            Data Mode (for hexasphere - download this version)
+        </label>
+    </div>
+    
+    <h3>Legend:</h3>
+    <ul>
+        <li><span style="color: blue;">Blue areas</span> = Ocean (varies by depth)</li>
+        <li><span style="color: green;">Green areas</span> = Forests & Grasslands</li>
+        <li><span style="color: brown;">Brown areas</span> = Mountains & Rocks</li>
+        <li><span style="color: orange;">Orange areas</span> = Deserts</li>
+        <li><span style="color: lightblue;">Light blue areas</span> = Tundra/Arctic</li>
+        <li><span style="color: darkgreen;">Dark green areas</span> = Jungles</li>
+        <li><span style="color: purple;">Purple areas</span> = Alien Crystals (alien worlds only)</li>
+    </ul>
+
+    <script>
+        const canvas = document.getElementById('terrainCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentSeed = 12345;
+        
+        // Better seeded random number generator
+        function seededRandom(seed) {
+            seed = (seed * 9301 + 49297) % 233280;
+            return seed / 233280;
+        }
+        
+        // Improved noise function
+        function noise(x, y, seed, octaves = 4) {
+            let value = 0;
+            let amplitude = 1;
+            let frequency = 1;
+            let maxValue = 0;
+            
+            for (let i = 0; i < octaves; i++) {
+                const sampleX = x * frequency;
+                const sampleY = y * frequency;
+                const noiseValue = seededRandom(Math.floor(sampleX * 1000 + sampleY * 100000 + seed + i * 1000)) * 2 - 1;
+                value += noiseValue * amplitude;
+                maxValue += amplitude;
+                amplitude *= 0.5;
+                frequency *= 2;
+            }
+            
+            return value / maxValue;
+        }
+        
+        // Simple interpolated noise
+        function smoothNoise(x, y, seed) {
+            const intX = Math.floor(x);
+            const intY = Math.floor(y);
+            const fracX = x - intX;
+            const fracY = y - intY;
+            
+            const a = seededRandom(intX + intY * 57 + seed);
+            const b = seededRandom(intX + 1 + intY * 57 + seed);
+            const c = seededRandom(intX + (intY + 1) * 57 + seed);
+            const d = seededRandom(intX + 1 + (intY + 1) * 57 + seed);
+            
+            const i1 = a + (b - a) * fracX;
+            const i2 = c + (d - c) * fracX;
+            
+            return i1 + (i2 - i1) * fracY;
+        }
+        
+        function generateTerrain() {
+            generateWorld('random');
+        }
+        
+        function generateIslandWorld() {
+            generateWorld('islands');
+        }
+        
+        function generateContinentalWorld() {
+            generateWorld('continents');
+        }
+        
+        function generateAlienWorld() {
+            generateWorld('alien');
+        }
+        
+        let currentWorldType = 'random';
+        
+        // Realistic biome configuration (land biomes only - ocean is base layer)
+        const biomeConfig = {
+            forest: { percentage: 45, priority: 1 },     // Most common land biome
+            desert: { percentage: 25, priority: 2 },     // Large desert regions
+            grassland: { percentage: 20, priority: 3 },  // Plains and savannas
+            mountain: { percentage: 6, priority: 4 },    // Mountain ranges
+            arctic: { percentage: 3, priority: 5 },      // Polar regions
+            jungle: { percentage: 1, priority: 6 }       // Tropical rainforests
+        };
+        
+        // Control overall land coverage (rest will be ocean)
+        const landCoverage = {
+            random: 0.55,      // 55% land, 45% ocean
+            islands: 0.35,     // 35% land, 65% ocean  
+            continents: 0.65,  // 65% land, 35% ocean
+            alien: 0.45        // 45% land, 55% ocean
+        };
+        
+        function generateWorld(type) {
+            currentWorldType = type;
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            const isDataMode = document.getElementById('dataMode').checked;
+            
+            // Generate land biome seed points (ocean is base layer)
+            const landSeeds = generateLandSeeds(type);
+            const targetLandCoverage = landCoverage[type] || landCoverage.random;
+            
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const pixelIndex = (y * canvas.width + x) * 4;
+                    
+                    // Normalize coordinates
+                    const nx = x / canvas.width;
+                    const ny = y / canvas.height;
+                    
+                    // Check if this pixel should be land or ocean
+                    const landInfluence = getLandInfluence(nx, ny, landSeeds);
+                    const borderInfluence = getOceanBorderInfluence(nx, ny);
+                    const adjustedLandInfluence = landInfluence * (1.0 - borderInfluence);
+                    const isLand = adjustedLandInfluence > (1.0 - targetLandCoverage);
+                    
+                    let terrainData;
+                    if (isLand) {
+                        // Find the dominant land biome for this pixel
+                        const biome = getClosestLandBiome(nx, ny, landSeeds);
+                        terrainData = generateTerrainForBiome(biome, nx, ny, type);
+                    } else {
+                        // Ocean base layer
+                        terrainData = generateTerrainForBiome('ocean', nx, ny, type);
+                    }
+                    
+                    if (isDataMode) {
+                        // Data mode - store encoded data for hexasphere
+                        data[pixelIndex] = terrainData.dataR;
+                        data[pixelIndex + 1] = terrainData.dataG;
+                        data[pixelIndex + 2] = terrainData.dataB;
+                    } else {
+                        // Visual mode - show pretty colors
+                        data[pixelIndex] = terrainData.displayR;
+                        data[pixelIndex + 1] = terrainData.displayG;
+                        data[pixelIndex + 2] = terrainData.displayB;
+                    }
+                    data[pixelIndex + 3] = 255;
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function generateLandSeeds(type) {
+            const seeds = [];
+            let seedIndex = 0;
+            
+            if (type === 'islands') {
+                // Island worlds - fewer but larger islands
+                const numIslands = 5 + Math.floor(seededRandom(currentSeed + seedIndex++) * 4); // 5-8 islands
+                
+                for (let i = 0; i < numIslands; i++) {
+                    // Keep islands away from edges
+                    const centerX = 0.15 + seededRandom(currentSeed + seedIndex++) * 0.7; // 15% margin
+                    const centerY = 0.15 + seededRandom(currentSeed + seedIndex++) * 0.7;
+                    const biomes = ['forest', 'grassland', 'desert', 'mountain'];
+                    const mainBiome = biomes[Math.floor(seededRandom(currentSeed + seedIndex++) * biomes.length)];
+                    
+                    // Main island biome - much larger
+                    seeds.push({
+                        x: centerX, 
+                        y: centerY, 
+                        biome: mainBiome, 
+                        size: 0.15 + seededRandom(currentSeed + seedIndex++) * 0.1
+                    });
+                    
+                    // Sometimes add a secondary biome to larger islands
+                    if (seededRandom(currentSeed + seedIndex++) > 0.5) {
+                        const secondaryBiome = biomes[Math.floor(seededRandom(currentSeed + seedIndex++) * biomes.length)];
+                        seeds.push({
+                            x: centerX + (seededRandom(currentSeed + seedIndex++) - 0.5) * 0.15, 
+                            y: centerY + (seededRandom(currentSeed + seedIndex++) - 0.5) * 0.15, 
+                            biome: secondaryBiome, 
+                            size: 0.08 + seededRandom(currentSeed + seedIndex++) * 0.06
+                        });
+                    }
+                }
+                
+            } else if (type === 'continents') {
+                // Continental worlds - fewer but massive continents
+                const numContinents = 2 + Math.floor(seededRandom(currentSeed + seedIndex++) * 2); // 2-3 continents
+                
+                for (let i = 0; i < numContinents; i++) {
+                    // Keep continents away from edges but allow some spread
+                    const centerX = 0.2 + seededRandom(currentSeed + seedIndex++) * 0.6; // 20% margin
+                    const centerY = 0.2 + seededRandom(currentSeed + seedIndex++) * 0.6;
+                    
+                    // Continent core - massive forest region
+                    seeds.push({ x: centerX, y: centerY, biome: 'forest', size: 0.25 + seededRandom(currentSeed + seedIndex++) * 0.1 });
+                    
+                    // Surrounding biomes - much larger and more spread out
+                    const offsets = [
+                        {dx: 0.25, dy: 0, biome: 'grassland'},
+                        {dx: -0.25, dy: 0, biome: 'desert'},
+                        {dx: 0, dy: 0.2, biome: 'mountain'},
+                        {dx: 0.18, dy: -0.18, biome: 'jungle'},
+                        {dx: -0.18, dy: 0.18, biome: 'grassland'},
+                        {dx: 0.15, dy: 0.15, biome: 'forest'},
+                        {dx: -0.15, dy: -0.15, biome: 'desert'}
+                    ];
+                    
+                    for (const offset of offsets) {
+                        if (seededRandom(currentSeed + seedIndex++) > 0.2) { // 80% chance for each surrounding biome
+                            seeds.push({
+                                x: centerX + offset.dx + (seededRandom(currentSeed + seedIndex++) - 0.5) * 0.08,
+                                y: centerY + offset.dy + (seededRandom(currentSeed + seedIndex++) - 0.5) * 0.08,
+                                biome: offset.biome,
+                                size: 0.15 + seededRandom(currentSeed + seedIndex++) * 0.08
+                            });
+                        }
+                    }
+                }
+                
+            } else {
+                // Balanced world - distribute based on biome percentages
+                Object.entries(biomeConfig).forEach(([biomeName, config]) => {
+                    const count = Math.max(1, Math.floor((config.percentage / 100) * 10)); // 10 total land seeds for larger regions
+                    
+                    for (let i = 0; i < count; i++) {
+                        let x, y, size;
+                        
+                        if (biomeName === 'arctic') {
+                            // Arctic at poles - much larger polar regions, but respect borders
+                            y = seededRandom(currentSeed + seedIndex++) < 0.5 ? 
+                                0.1 + seededRandom(currentSeed + seedIndex++) * 0.15 : // North pole with margin
+                                0.75 + seededRandom(currentSeed + seedIndex++) * 0.15; // South pole with margin
+                            x = 0.15 + seededRandom(currentSeed + seedIndex++) * 0.7; // Respect left/right borders
+                            size = 0.12 + seededRandom(currentSeed + seedIndex++) * 0.08;
+                        } else if (biomeName === 'desert') {
+                            // Deserts in dry belts - massive desert regions
+                            y = seededRandom(currentSeed + seedIndex++) < 0.5 ?
+                                0.2 + seededRandom(currentSeed + seedIndex++) * 0.15 : // Northern dry belt
+                                0.65 + seededRandom(currentSeed + seedIndex++) * 0.15; // Southern dry belt
+                            x = 0.12 + seededRandom(currentSeed + seedIndex++) * 0.76; // Respect borders
+                            size = 0.2 + seededRandom(currentSeed + seedIndex++) * 0.12;
+                        } else if (biomeName === 'jungle') {
+                            // Jungles near equator - larger tropical regions
+                            y = 0.4 + seededRandom(currentSeed + seedIndex++) * 0.2; // Equatorial
+                            x = 0.12 + seededRandom(currentSeed + seedIndex++) * 0.76; // Respect borders
+                            size = 0.15 + seededRandom(currentSeed + seedIndex++) * 0.08;
+                        } else {
+                            // Other biomes randomly distributed - much larger, away from edges
+                            x = 0.12 + seededRandom(currentSeed + seedIndex++) * 0.76; // 12% margin
+                            y = 0.12 + seededRandom(currentSeed + seedIndex++) * 0.76;
+                            size = 0.18 + seededRandom(currentSeed + seedIndex++) * 0.1;
+                        }
+                        
+                        seeds.push({ x, y, biome: biomeName, size });
+                    }
+                });
+            }
+            
+            return seeds;
+        }
+        
+        function getLandInfluence(nx, ny, landSeeds) {
+            let maxInfluence = 0;
+            
+            for (const seed of landSeeds) {
+                // Calculate distance with wrapping for longitude
+                let dx = Math.abs(nx - seed.x);
+                dx = Math.min(dx, 1 - dx); // Wrap around
+                const dy = ny - seed.y;
+                
+                // Create oval influence zones
+                const ellipseX = dx / (seed.size * 1.2); // Slightly wider
+                const ellipseY = dy / seed.size;
+                const distance = Math.sqrt(ellipseX * ellipseX + ellipseY * ellipseY);
+                
+                // Convert distance to influence (closer = higher influence)
+                const influence = Math.max(0, 1.0 - distance);
+                maxInfluence = Math.max(maxInfluence, influence);
+            }
+            
+            return maxInfluence;
+        }
+        
+        function getOceanBorderInfluence(nx, ny) {
+            const borderWidth = 0.08; // 8% border on each side
+            
+            // Calculate distance from each edge
+            const distFromLeft = nx;
+            const distFromRight = 1.0 - nx;
+            const distFromTop = ny;
+            const distFromBottom = 1.0 - ny;
+            
+            // Find the minimum distance to any edge
+            const minDistToEdge = Math.min(distFromLeft, distFromRight, distFromTop, distFromBottom);
+            
+            // Create border influence that fades in smoothly
+            if (minDistToEdge < borderWidth) {
+                // Smooth transition from 1.0 at edge to 0.0 at borderWidth
+                const borderFactor = 1.0 - (minDistToEdge / borderWidth);
+                return Math.pow(borderFactor, 1.5); // Smooth curve
+            }
+            
+            return 0.0; // No border influence in the interior
+        }
+        
+        function getClosestLandBiome(nx, ny, landSeeds) {
+            let closestBiome = 'forest'; // Default land biome
+            let minDistance = Infinity;
+            
+            for (const seed of landSeeds) {
+                // Calculate distance with wrapping for longitude
+                let dx = Math.abs(nx - seed.x);
+                dx = Math.min(dx, 1 - dx); // Wrap around
+                const dy = ny - seed.y;
+                
+                // Create oval influence zones
+                const ellipseX = dx / (seed.size * 1.2); // Slightly wider
+                const ellipseY = dy / seed.size;
+                const distance = Math.sqrt(ellipseX * ellipseX + ellipseY * ellipseY);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestBiome = seed.biome;
+                }
+            }
+            
+            return closestBiome;
+        }
+        
+        function generateTerrainForBiome(biome, nx, ny, worldType) {
+                        const latitudeFactor = Math.abs(ny - 0.5) * 2; // 0 at equator, 1 at poles
+            
+            // Add noise for natural variation
+            const elevationNoise = (smoothNoise(nx * 8, ny * 8, currentSeed + 1000) * 2 - 1) * 30;
+            const temperatureNoise = (smoothNoise(nx * 6, ny * 6, currentSeed + 2000) * 2 - 1) * 15;
+            
+            let dataR, dataG, dataB, displayR, displayG, displayB;
+            
+            switch (biome) {
+                case 'ocean':
+                    const depth = 50 + Math.abs(elevationNoise) * 2;
+                    dataR = 50; dataG = 100; dataB = Math.min(255, depth + 150);
+                    displayR = 15; displayG = 82; displayB = 186;
+                    break;
+                    
+                case 'desert':
+                    const desertElevation = Math.max(50, 120 + elevationNoise);
+                    dataR = 0; dataG = desertElevation; dataB = 50;
+                            displayR = 245; displayG = 158; displayB = 11;
+                    break;
+                    
+                case 'arctic':
+                    const arcticElevation = Math.max(50, 100 + elevationNoise);
+                    dataR = 0; dataG = arcticElevation; dataB = 240;
+                            displayR = 219; displayG = 234; displayB = 254;
+                    break;
+                    
+                case 'mountain':
+                    const mountainElevation = Math.max(150, 200 + elevationNoise);
+                    dataR = 0; dataG = mountainElevation; 
+                    dataB = mountainElevation > 220 ? 255 : 100; // Snow cap on high peaks
+                    displayR = mountainElevation > 220 ? 248 : 120;
+                    displayG = mountainElevation > 220 ? 250 : 113;
+                    displayB = mountainElevation > 220 ? 252 : 108;
+                    break;
+                    
+                case 'jungle':
+                    const jungleElevation = Math.max(50, 90 + elevationNoise);
+                    dataR = 0; dataG = jungleElevation; dataB = 180;
+                            displayR = 5; displayG = 150; displayB = 105;
+                    break;
+                    
+                case 'grassland':
+                    const grassElevation = Math.max(50, 80 + elevationNoise);
+                    dataR = 0; dataG = grassElevation; dataB = 120;
+                            displayR = 101; displayG = 163; displayB = 13;
+                    break;
+                    
+                case 'forest':
+                default:
+                    const forestElevation = Math.max(50, 100 + elevationNoise);
+                    dataR = 0; dataG = forestElevation; dataB = 150;
+                            displayR = 34; displayG = 139; displayB = 34;
+                    break;
+            }
+            
+            // Handle alien world modifications
+            if (worldType === 'alien' && biome !== 'ocean') {
+                const alienNoise = smoothNoise(nx * 15, ny * 15, currentSeed + 5000);
+                if (alienNoise > 0.8) {
+                    dataB = 200; // Alien crystals
+                    displayR = 168; displayG = 85; displayB = 247;
+                }
+            }
+            
+            return { dataR, dataG, dataB, displayR, displayG, displayB };
+        }
+        
+        function downloadMap() {
+            const link = document.createElement('a');
+            link.download = 'fictional_world.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        function updateSeed() {
+            currentSeed = parseInt(document.getElementById('seedInput').value);
+            generateTerrain();
+        }
+        
+        function randomSeed() {
+            currentSeed = Math.floor(Math.random() * 999999);
+            document.getElementById('seedInput').value = currentSeed;
+            generateTerrain();
+        }
+        
+        function regenerateCurrentWorld() {
+            generateWorld(currentWorldType);
+        }
+        
+        // Generate initial terrain
+        generateTerrain();
+    </script>
+</body>
+</html>

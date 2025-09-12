@@ -1,6 +1,6 @@
 {
   "name": "hexasphere.js",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "description": "hexasphere - Generate hexagonal sphere geometries with TypeScript and Three.js",
   "main": "dist/hexasphere.js",
   "module": "dist/hexasphere.esm.js",
@@ -26,8 +26,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/arscan/hexashere.js.git"
+    "url": "git://github.com/hightouch67/hexasphere.giit"
   },
-  "author": "robscanlon@gmail.com",
+  "author": "hightouch@hotmail.fr",
   "license": "MIT"
 }

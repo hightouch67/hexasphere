@@ -397,15 +397,21 @@ function updateTileVisualization() {
     domains.forEach(domain => {
         if (domain.tileIndex !== null) {
             let color = 0x4FC3F7; // Default blue for domain tiles
-            
+
             if (selectedDomain === domain.name) {
                 color = 0xff6b6b; // Red for selected domain
             }
-            
+
+            // Make the label color white if the domain name contains "seed"
+            let labelColor = color;
+            if (domain.name.toLowerCase().includes("seed")) {
+                labelColor = 0xffffff;
+            }
+
             hexasphere.setTileColor(domain.tileIndex, color);
-            
-            // Add label
-            hexasphere.addTileLabel(domain.tileIndex, domain.name, color, 10);
+
+            // Add label with possibly white color for "seed" domains
+            hexasphere.addTileLabel(domain.tileIndex, domain.name, labelColor, 10);
             console.log(`📍 Placed ${domain.name} on tile ${domain.tileIndex}`);
         } else {
             console.log(`❌ No tile index for ${domain.name}`);
@@ -450,21 +456,23 @@ function updateDomainVisualization() {
 // Draw paths between all domain tiles to show network connections
 function drawNetworkPaths() {
     const validDomains = domains.filter(d => d.tileIndex !== null);
-    
+
     if (validDomains.length < 2) return;
-    
+
     // Create spider web pattern - each domain connects to the next one in sequence
     for (let i = 0; i < validDomains.length; i++) {
         const domain1 = validDomains[i];
         const domain2 = validDomains[(i + 1) % validDomains.length]; // Connect to next domain, wrap around to first
-        
+
         // Create a curved path between the two tiles
         const tile1 = hexasphere.getTiles()[domain1.tileIndex];
         const tile2 = hexasphere.getTiles()[domain2.tileIndex];
-        
+
         if (tile1 && tile2) {
-            // Add the path to the hexasphere
-            hexasphere.createCurvedLine(domain1.tileIndex, domain2.tileIndex, 0xffffff, 12); // White lines
+            // Generate a unique color for each connection using HSL
+            const hue = Math.floor((i / validDomains.length) * 360);
+            const color = new THREE.Color(`hsl(${hue}, 80%, 50%)`);
+            hexasphere.createCurvedLine(domain1.tileIndex, domain2.tileIndex, color.getHex(), 12);
         }
     }
 }

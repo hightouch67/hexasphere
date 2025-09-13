@@ -1002,7 +1002,7 @@ export class HexaSphere {
 
         // --- Load textures asynchronously ---
         const [visualTexture, continentMask] = await Promise.all([
-            textureLoader.loadAsync("earth-blue-marble.jpg"),
+            textureLoader.loadAsync("map.png"),
             textureLoader.loadAsync("equirectangle_projection.png"),
         ]);
 

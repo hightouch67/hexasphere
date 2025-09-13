@@ -23,7 +23,9 @@ export declare class HexaSphere {
     private pathLines;
     private tileLabels;
     private tileLabelCounts?;
-    constructor(radius: number, numDivisions: number, hexSize: number, scene: THREE.Scene);
+    private planetMesh?;
+    viewMode: 'planet' | 'tile' | 'both';
+    constructor(radius: number, numDivisions: number, hexSize: number, scene: THREE.Scene, viewMode: 'planet' | 'tile' | 'both');
     private loadProjectionMap;
     private generateHexasphere;
     private isLand;
@@ -44,7 +46,9 @@ export declare class HexaSphere {
     clearPathLines(): void;
     clearTileLabels(): void;
     private createMeshes;
+    private createPlanetMesh;
     getTiles(): Tile[];
+    getPlanetMesh(): THREE.Mesh | undefined;
     setTileColor(tileIndex: number, color: number): void;
     regenerate(radius: number, numDivisions: number, hexSize: number): void;
 }

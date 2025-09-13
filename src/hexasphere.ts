@@ -121,11 +121,11 @@ class Face {
 
     getCentroid(): Point {
         if (this.centroid) return this.centroid;
-        
+
         const x = (this.points[0].x + this.points[1].x + this.points[2].x) / 3;
         const y = (this.points[0].y + this.points[1].y + this.points[2].y) / 3;
         const z = (this.points[0].z + this.points[1].z + this.points[2].z) / 3;
-        
+
         this.centroid = new Point(x, y, z);
         return this.centroid;
     }
@@ -214,19 +214,23 @@ export class HexaSphere {
     private pathLines: THREE.Mesh[] = [];
     private tileLabels: THREE.Object3D[] = [];
     private tileLabelCounts?: Map<number, number>;
+    private planetMesh?: THREE.Mesh;
+    private atmosphereMesh?: THREE.Mesh;
 
-    constructor(radius: number, numDivisions: number, hexSize: number, scene: THREE.Scene) {
+    viewMode: 'planet' | 'tile' | 'both';
+    constructor(radius: number, numDivisions: number, hexSize: number, scene: THREE.Scene, viewMode: 'planet' | 'tile' | 'both') {
         this.radius = radius;
         this.scene = scene;
+        this.viewMode = viewMode;
         this.loadProjectionMap().then(() => {
-            this.generateHexasphere(radius, numDivisions, hexSize);
+            this.generateHexasphere(radius, numDivisions, hexSize, this.viewMode);
         });
     }
 
     private async loadProjectionMap(): Promise<void> {
         return new Promise((resolve) => {
             const img = document.getElementById("projection") as HTMLImageElement;
-            
+
             if (!img) {
                 resolve();
                 return;
@@ -235,10 +239,10 @@ export class HexaSphere {
             const processImage = () => {
                 this.projectionCanvas = document.createElement('canvas');
                 const context = this.projectionCanvas.getContext('2d')!;
-                
+
                 this.projectionCanvas.width = img.naturalWidth || img.width;
                 this.projectionCanvas.height = img.naturalHeight || img.height;
-                
+
                 context.drawImage(img, 0, 0);
                 this.projectionData = context.getImageData(0, 0, this.projectionCanvas.width, this.projectionCanvas.height);
             };
@@ -252,7 +256,7 @@ export class HexaSphere {
         });
     }
 
-    private generateHexasphere(radius: number, numDivisions: number, hexSize: number) {
+    private generateHexasphere(radius: number, numDivisions: number, hexSize: number, viewMode: 'planet' | 'tile' | 'both'): void {
         const tao = 1.61803399;
         const corners = [
             new Point(1000, tao * 1000, 0),
@@ -364,8 +368,15 @@ export class HexaSphere {
             const avgNeighbors = this.tiles.reduce((sum, t) => sum + t.neighbors.length, 0) / this.tiles.length;
             console.log(`🔗 Average neighbors per tile: ${avgNeighbors.toFixed(1)}`);
         }
-
-        this.createMeshes();
+        console.log(this.viewMode)
+        if (this.viewMode === 'tile' || this.viewMode === 'both') {
+            this.createMeshes();
+        }
+        if (this.viewMode === 'planet' || this.viewMode === 'both') {
+            console.log('🌍 Creating planet and atmosphere meshes...');
+            this.createPlanetMesh();
+            this.createAtmosphereMesh();
+        }
     }
 
     private isLand(lat: number, lon: number): boolean {
@@ -375,10 +386,10 @@ export class HexaSphere {
 
         const x = Math.floor(this.projectionCanvas.width * (lon + 180) / 360);
         const y = Math.floor(this.projectionCanvas.height * (lat + 90) / 180);
-        
+
         const clampedX = Math.max(0, Math.min(this.projectionCanvas.width - 1, x));
         const clampedY = Math.max(0, Math.min(this.projectionCanvas.height - 1, y));
-        
+
         const pixelIndex = (clampedY * this.projectionCanvas.width + clampedX) * 4;
         return this.projectionData.data[pixelIndex] === 0;
     }
@@ -397,10 +408,10 @@ export class HexaSphere {
 
         const x = Math.floor(this.projectionCanvas.width * (lon + 180) / 360);
         const y = Math.floor(this.projectionCanvas.height * (lat + 90) / 180);
-        
+
         const clampedX = Math.max(0, Math.min(this.projectionCanvas.width - 1, x));
         const clampedY = Math.max(0, Math.min(this.projectionCanvas.height - 1, y));
-        
+
         const pixelIndex = (clampedY * this.projectionCanvas.width + clampedX) * 4;
         const r = this.projectionData.data[pixelIndex];
         const b = this.projectionData.data[pixelIndex + 2];
@@ -421,13 +432,13 @@ export class HexaSphere {
     private getMountainDensity(lat: number, lon: number, radius: number = 5): number {
         let mountainCount = 0;
         let totalSamples = 0;
-        
+
         // Sample in a grid around the point
         for (let dlat = -radius; dlat <= radius; dlat += 2) {
             for (let dlon = -radius; dlon <= radius; dlon += 2) {
                 const sampleLat = lat + dlat;
                 const sampleLon = lon + dlon;
-                
+
                 // Keep coordinates in valid range
                 if (sampleLat >= -90 && sampleLat <= 90 && sampleLon >= -180 && sampleLon <= 180) {
                     const terrainType = this.getBasicTerrainType(sampleLat, sampleLon);
@@ -438,7 +449,7 @@ export class HexaSphere {
                 }
             }
         }
-        
+
         return totalSamples > 0 ? mountainCount / totalSamples : 0;
     }
 
@@ -455,10 +466,10 @@ export class HexaSphere {
 
         const x = Math.floor(this.projectionCanvas.width * (lon + 180) / 360);
         const y = Math.floor(this.projectionCanvas.height * (lat + 90) / 180);
-        
+
         const clampedX = Math.max(0, Math.min(this.projectionCanvas.width - 1, x));
         const clampedY = Math.max(0, Math.min(this.projectionCanvas.height - 1, y));
-        
+
         const pixelIndex = (clampedY * this.projectionCanvas.width + clampedX) * 4;
         const r = this.projectionData.data[pixelIndex];
         const g = this.projectionData.data[pixelIndex + 1];
@@ -466,7 +477,7 @@ export class HexaSphere {
 
         // Use RGB values to determine terrain types
         const isLand = r === 0;
-        
+
         if (!isLand) {
             // Ocean depth based on blue intensity
             const depth = Math.min(255 - b, 200);
@@ -484,7 +495,7 @@ export class HexaSphere {
         const baseTemp = 35 - absLat * 0.7;
         const elevation = g;
         const climateMarker = b;
-        
+
         // Determine terrain type based on blue channel markers and climate
         if (climateMarker === 255) {
             // Snow-capped Mountains (white areas)
@@ -514,29 +525,29 @@ export class HexaSphere {
         } else if (climateMarker === 100) {
             // Mountains (brown areas) with density-based elevation variation
             const mountainColors = [0x78716c, 0x57534e, 0x44403c, 0x292524];
-            
+
             // Calculate mountain density to determine elevation
             // Mountains in the center of mountain regions are higher
             const mountainDensity = this.getMountainDensity(lat, lon, 3);
-            
+
             // Base elevation from PNG (can be same for all mountains)
             const baseElevation = elevation;
-            
+
             // Vary elevation based on mountain density (0.0 to 1.0)
             // Higher density = higher elevation (peak of mountain range)
             // Lower density = lower elevation (edges of mountain range)
             const densityMultiplier = 0.3 + (mountainDensity * 0.7); // Range: 0.3 to 1.0
             const variedElevation = baseElevation * densityMultiplier;
-            
+
             // Add some random variation for natural look
             const randomVariation = 0.9 + (Math.random() * 0.2); // 0.9 to 1.1
             const finalElevation = Math.floor(variedElevation * randomVariation);
-            
+
             // Debug logging for mountain elevation
             if (Math.random() < 0.005) { // Log 0.5% of mountain tiles
                 console.log(`Mountain at lat:${lat.toFixed(1)}, lon:${lon.toFixed(1)} - density:${mountainDensity.toFixed(2)}, base:${baseElevation}, final:${finalElevation}`);
             }
-            
+
             return {
                 type: 'mountain',
                 elevation: finalElevation,
@@ -658,42 +669,42 @@ export class HexaSphere {
         const context = canvas.getContext('2d')!;
         canvas.width = 256;
         canvas.height = 64;
-        
+
         context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
         context.font = 'Bold 24px Arial';
         context.textAlign = 'center';
         context.fillText(text, 128, 40);
-        
+
         const texture = new THREE.CanvasTexture(canvas);
         const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
         const sprite = new THREE.Sprite(spriteMaterial);
-        
+
         // Position above tile with vertical spacing for multiple labels
         const verticalOffset = labelCount * 2; // Space labels 2 units apart vertically
         const position = this.getTilePosition(tileIndex, height + verticalOffset);
         sprite.position.copy(position);
         sprite.scale.set(8, 2, 1);
-        
+
         // Add connecting line
         const lineGeometry = new THREE.BufferGeometry();
         const tilePos = this.getTilePosition(tileIndex, 0.5);
         lineGeometry.setFromPoints([tilePos, position]);
-        
-        const lineMaterial = new THREE.LineBasicMaterial({ 
-            color: color, 
-            transparent: true, 
-            opacity: 0.7 
+
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.7
         });
         const line = new THREE.Line(lineGeometry, lineMaterial);
-        
+
         // Group sprite and line
         const group = new THREE.Group();
         group.add(sprite);
         group.add(line);
-        
+
         this.scene.add(group);
         this.tileLabels.push(group);
-        
+
         return group;
     }
 
@@ -701,12 +712,12 @@ export class HexaSphere {
     private getTilePosition(tileIndex: number, height: number): THREE.Vector3 {
         const tile = this.tiles[tileIndex];
         if (!tile) return new THREE.Vector3();
-        
+
         // Normalize center point to sphere surface, then extend outward
         const center = tile.centerPoint;
         const length = Math.sqrt(center.x * center.x + center.y * center.y + center.z * center.z);
         const normalized = new THREE.Vector3(center.x / length, center.y / length, center.z / length);
-        
+
         return normalized.multiplyScalar(this.radius + height);
     }
 
@@ -714,30 +725,30 @@ export class HexaSphere {
     createCurvedLine(startTileIndex: number, endTileIndex: number, color: number = 0x00ffff, segments: number = 20): THREE.Mesh {
         const startTile = this.tiles[startTileIndex];
         const endTile = this.tiles[endTileIndex];
-        
+
         if (!startTile || !endTile) {
             return new THREE.Mesh();
         }
-        
+
         // Get normalized positions on sphere surface
         const startPos = this.getTilePosition(startTileIndex, 0.5);
         const endPos = this.getTilePosition(endTileIndex, 0.5);
-        
+
         // Calculate distance between points to determine arc height
         const distance = startPos.distanceTo(endPos);
         const maxArcHeight = Math.min(distance * 0.3, this.radius * 0.25); // Dynamic height based on distance
-        
+
         // Create great circle path with elevated midpoint
         const points: THREE.Vector3[] = [];
         for (let i = 0; i <= segments; i++) {
             const t = i / segments;
-            
+
             // Spherical linear interpolation (SLERP)
             const dot = startPos.clone().normalize().dot(endPos.clone().normalize());
             const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
-            
+
             let interpolated: THREE.Vector3;
-            
+
             if (theta < 0.001) {
                 // Points are very close, use linear interpolation
                 interpolated = startPos.clone().lerp(endPos, t);
@@ -745,32 +756,32 @@ export class HexaSphere {
                 const sinTheta = Math.sin(theta);
                 const a = Math.sin((1 - t) * theta) / sinTheta;
                 const b = Math.sin(t * theta) / sinTheta;
-                
+
                 interpolated = startPos.clone().multiplyScalar(a).add(endPos.clone().multiplyScalar(b));
                 interpolated.normalize();
             }
-            
+
             // Add parabolic height curve - highest at midpoint (t=0.5)
             const heightMultiplier = 1 - Math.pow(2 * t - 1, 2); // Parabola: max at t=0.5, min at t=0,1
             const currentHeight = 0.5 + (maxArcHeight * heightMultiplier);
-            
+
             interpolated.multiplyScalar(this.radius + currentHeight);
             points.push(interpolated);
         }
-        
+
         // Create tube geometry following the curve
         const curve = new THREE.CatmullRomCurve3(points);
         const tubeGeometry = new THREE.TubeGeometry(curve, segments, 0.08, 6, false);
-        const tubeMaterial = new THREE.MeshBasicMaterial({ 
+        const tubeMaterial = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
             opacity: 0.9
         });
-        
+
         const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
         this.scene.add(tubeMesh);
         this.pathLines.push(tubeMesh);
-        
+
         return tubeMesh;
     }
 
@@ -816,7 +827,7 @@ export class HexaSphere {
             // Get terrain info and elevation
             const latLon = tile.getLatLon(this.radius);
             const terrainInfo = this.getTerrainInfo(latLon.lat, latLon.lon);
-            
+
             // Calculate elevation multiplier based on terrain type
             let elevationMultiplier = 0;
             if (terrainInfo.type === 'mountain') {
@@ -838,34 +849,34 @@ export class HexaSphere {
             if (elevationMultiplier > 0) {
                 // Create extruded geometry for elevated tiles (flat-topped)
                 const elevationHeight = (terrainInfo.elevation / 255) * elevationMultiplier * this.radius;
-                
+
                 // Store original and elevated vertices
                 const baseVertices: number[] = [];
                 const topVertices: number[] = [];
-                
+
                 // Add base vertices (original surface) and top vertices (elevated uniformly)
                 for (const bp of tile.boundary) {
                     // Base vertices (on sphere surface)
                     baseVertices.push(bp.x, bp.y, bp.z);
-                    
+
                     // Calculate elevated position (uniform elevation for flat top)
                     const length = Math.sqrt(bp.x * bp.x + bp.y * bp.y + bp.z * bp.z);
                     const normalX = bp.x / length;
                     const normalY = bp.y / length;
                     const normalZ = bp.z / length;
-                    
+
                     const elevatedX = bp.x + normalX * elevationHeight;
                     const elevatedY = bp.y + normalY * elevationHeight;
                     const elevatedZ = bp.z + normalZ * elevationHeight;
-                    
+
                     topVertices.push(elevatedX, elevatedY, elevatedZ);
                 }
-                
+
                 // Add all vertices to the geometry (base first, then top)
                 vertices.push(...baseVertices, ...topVertices);
-                
+
                 const numBoundaryPoints = tile.boundary.length;
-                
+
                 // Create top face triangles (elevated surface)
                 for (let j = 1; j < numBoundaryPoints - 1; j++) {
                     indices.push(
@@ -881,25 +892,25 @@ export class HexaSphere {
                         numBoundaryPoints + 1                       // second top vertex
                     );
                 }
-                
+
                 // Create side walls connecting base to top
                 for (let j = 0; j < numBoundaryPoints; j++) {
                     const nextJ = (j + 1) % numBoundaryPoints;
-                    
+
                     // Two triangles per side wall
                     indices.push(
                         j,                          // base vertex j
                         nextJ,                      // base vertex j+1
                         numBoundaryPoints + j       // top vertex j
                     );
-                    
+
                     indices.push(
                         nextJ,                      // base vertex j+1
                         numBoundaryPoints + nextJ,  // top vertex j+1
                         numBoundaryPoints + j       // top vertex j
                     );
                 }
-                
+
                 // Create bottom face triangles (base surface) - facing inward
                 for (let j = 1; j < numBoundaryPoints - 1; j++) {
                     indices.push(
@@ -915,13 +926,13 @@ export class HexaSphere {
                         numBoundaryPoints - 1   // last base vertex
                     );
                 }
-                
+
             } else {
                 // Create simple flat geometry for non-elevated tiles
                 for (const bp of tile.boundary) {
                     vertices.push(bp.x, bp.y, bp.z);
                 }
-                
+
                 // Create triangles
                 for (let j = 1; j < tile.boundary.length - 1; j++) {
                     indices.push(0, j, j + 1);
@@ -935,10 +946,44 @@ export class HexaSphere {
             geometry.setIndex(indices);
             geometry.computeVertexNormals();
 
+            // Add UV coordinates for texture mapping
+            const uvs: number[] = [];
+            if (elevationMultiplier > 0) {
+                // For elevated tiles, add UVs for both base and top vertices
+                for (const bp of tile.boundary) {
+                    // Convert 3D position to UV coordinates
+                    const lat = Math.asin(bp.y / this.radius) * 180 / Math.PI;
+                    const lon = Math.atan2(bp.z, bp.x) * 180 / Math.PI;
+                    const u = (lon + 180) / 360;
+                    const v = (lat + 90) / 180;
+                    uvs.push(u, v);
+                }
+                // Duplicate UVs for top vertices
+                uvs.push(...uvs);
+            } else {
+                // For flat tiles, add UVs for boundary vertices
+                for (const bp of tile.boundary) {
+                    // Convert 3D position to UV coordinates
+                    const lat = Math.asin(bp.y / this.radius) * 180 / Math.PI;
+                    const lon = Math.atan2(bp.z, bp.x) * 180 / Math.PI;
+                    const u = (lon + 180) / 360;
+                    const v = (lat + 90) / 180;
+                    uvs.push(u, v);
+                }
+            }
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
             const color = terrainInfo.color;
 
-            const material = new THREE.MeshLambertMaterial({ 
+            // Load visual texture (earth-blue-marble.jpg)
+            const textureLoader = new THREE.TextureLoader();
+            const visualTexture = textureLoader.load('earth-blue-marble.jpg');
+            visualTexture.wrapS = THREE.RepeatWrapping;
+            visualTexture.wrapT = THREE.RepeatWrapping;
+
+            const material = new THREE.MeshLambertMaterial({
                 color: color,
+                map: visualTexture,
                 transparent: true,
                 opacity: 0.9
             });
@@ -951,8 +996,78 @@ export class HexaSphere {
         console.log(`✅ Created ${this.tiles.length} tiles`);
     }
 
+    private createPlanetMesh() {
+        const geometry = new THREE.SphereGeometry(this.radius, 256, 256);
+        const textureLoader = new THREE.TextureLoader();
+
+        const visualTexture = textureLoader.load("earth-blue-marble.jpg");
+        visualTexture.wrapS = THREE.RepeatWrapping;
+        visualTexture.wrapT = THREE.ClampToEdgeWrapping;
+        visualTexture.colorSpace = THREE.SRGBColorSpace;
+        visualTexture.repeat.set(1, 1);
+
+        const continentMask = textureLoader.load("earth-bump.jpg");
+        continentMask.colorSpace = THREE.LinearSRGBColorSpace;
+        continentMask.wrapT = THREE.RepeatWrapping;
+        continentMask.wrapS = THREE.ClampToEdgeWrapping;
+        continentMask.repeat.set(1, 1);
+
+        const material = new THREE.MeshStandardMaterial({
+            map: visualTexture,
+            displacementMap: continentMask,
+            displacementScale: this.radius * 0.1, // how much continents rise
+        });
+
+        // Create mesh
+        this.planetMesh = new THREE.Mesh(geometry, material);
+        this.planetMesh.renderOrder = 0;
+        this.scene.add(this.planetMesh);
+
+        console.log(`🌍 Created planet mesh with extruded continents`);
+    }
+
+    private createAtmosphereMesh() {
+
+
+
+        const textureLoader = new THREE.TextureLoader();
+        const atmosphereTexture = textureLoader.load("clouds.png", () => {
+            console.log("☁️ Cloud texture loaded successfully");
+        });
+
+        const geometry = new THREE.SphereGeometry(this.radius * 1.12, 64, 64);
+
+        const cloudMaterial = new THREE.MeshStandardMaterial({
+            map: atmosphereTexture,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        this.atmosphereMesh = new THREE.Mesh(geometry, cloudMaterial);
+        this.atmosphereMesh.renderOrder = 999;
+        this.scene.add(this.atmosphereMesh);
+    }
+
     getTiles(): Tile[] {
         return this.tiles;
+    }
+
+    getPlanetMesh(): THREE.Mesh | undefined {
+        return this.planetMesh;
+    }
+
+    getAtmosphereMesh(): THREE.Mesh | undefined {
+        return this.atmosphereMesh;
+    }
+
+    // Animate the atmosphere clouds
+    animateAtmosphere(deltaTime: number) {
+        if (this.atmosphereMesh) {
+            // Rotate slightly + move texture for smooth effect
+            //this.atmosphereMesh.rotation.y += deltaTime * 0.0005;
+        }
     }
 
     setTileColor(tileIndex: number, color: number) {
@@ -976,6 +1091,21 @@ export class HexaSphere {
         this.clearPathLines();
         this.clearTileLabels();
 
+        // Clear planet and atmosphere meshes
+        if (this.planetMesh) {
+            this.scene.remove(this.planetMesh);
+            this.planetMesh.geometry.dispose();
+            (this.planetMesh.material as THREE.Material).dispose();
+            this.planetMesh = undefined;
+        }
+
+        if (this.atmosphereMesh) {
+            this.scene.remove(this.atmosphereMesh);
+            this.atmosphereMesh.geometry.dispose();
+            (this.atmosphereMesh.material as THREE.Material).dispose();
+            this.atmosphereMesh = undefined;
+        }
+
         // Reset
         this.tiles = [];
         this.tileLookup = {};
@@ -985,6 +1115,6 @@ export class HexaSphere {
         this.radius = radius;
 
         // Regenerate
-        this.generateHexasphere(radius, numDivisions, hexSize);
+        this.generateHexasphere(radius, numDivisions, hexSize, this.viewMode);
     }
 }

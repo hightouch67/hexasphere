@@ -22,7 +22,7 @@ scene.add(directionalLight);
 camera.position.z = 80;
 
 // Create hexasphere (smaller for network visualization)
-let hexasphere = new HexaSphere(30, 30, 0.98, scene);
+let hexasphere = new HexaSphere(30, 30, 0.98, scene, 'planet');
 
 // Add sample cities for testing
 setTimeout(() => {
@@ -826,8 +826,20 @@ window.addEventListener('resize', () => {
 });
 
 // Animation loop
-function animate() {
+let lastTime = 0;
+function animate(currentTime) {
     requestAnimationFrame(animate);
+    
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+    
+    // Animate atmosphere clouds
+    if (hexasphere && hexasphere.getAtmosphereMesh()) {
+        setTimeout(() => {
+            hexasphere.animateAtmosphere(deltaTime);
+        }, 500); // Use setTimeout to prevent blocking
+    }
+    
     renderer.render(scene, camera);
 }
 
@@ -856,8 +868,10 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Start animation
-animate();
+// Start animation after a delay to allow hexasphere to initialize
+setTimeout(() => {
+    animate();
+}, 1000); // Wait 1 second for atmosphere to be created
 
 // Automatically load domain-mapping.json on startup
 setTimeout(async () => {
@@ -946,9 +960,6 @@ setTimeout(async () => {
                 }))
             };
             
-            // Note: In a real application, you'd need server-side support to write files
-            console.log('Updated mapping data (copy this to update the JSON file):');
-            console.log(JSON.stringify(updatedMapping, null, 2));
         }
         
         // Skip automatic geolocation resolution since we already have the data

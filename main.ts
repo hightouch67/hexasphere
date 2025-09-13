@@ -21,8 +21,22 @@ scene.add(directionalLight);
 // Position camera
 camera.position.z = 80;
 
+// Toggle for no-draw mode
+const viewMode = 'tile'; // Options: 'tile', 'planet', or 'both'
+
 // Create initial hexasphere
-let hexasphere = new HexaSphere(25, 20, 0.98, scene);
+let hexasphere = new HexaSphere(25, 20, 0.98, scene, viewMode);
+
+// Output tile coordinates to console (no drawing)
+function logTileCoordinates() {
+    const tiles = hexasphere.getTiles();
+    tiles.forEach((tile, idx) => {
+        // Output center and boundary points
+        console.log(`Tile ${idx}: center=`, tile.centerPoint, 'boundary=', tile.boundary);
+    });
+}
+
+logTileCoordinates();
 
 // Add sample city labels after hexasphere is ready
 setTimeout(() => {
@@ -79,23 +93,55 @@ function onTileClick(event: MouseEvent) {
     // Update raycaster
     raycaster.setFromCamera(mouse, camera);
 
-    // Get all tile meshes
-    const tileMeshes = hexasphere.getTiles()
-        .map(tile => tile.mesh)
-        .filter(mesh => mesh !== undefined) as THREE.Mesh[];
+    let clickedTileIndex = -1;
 
-    // Check for intersections
-    const intersects = raycaster.intersectObjects(tileMeshes);
+    if (viewMode === 'tile' || viewMode === 'both') {
+        // Get all tile meshes
+        const tileMeshes = hexasphere.getTiles()
+            .map(tile => tile.mesh)
+            .filter(mesh => mesh !== undefined) as THREE.Mesh[];
 
-    if (intersects.length > 0) {
-        const clickedMesh = intersects[0].object as THREE.Mesh;
-        
-        // Find which tile was clicked
-        const clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
-        
-        if (clickedTileIndex !== -1) {
-            selectTile(clickedTileIndex);
+        // Check for intersections
+        const intersects = raycaster.intersectObjects(tileMeshes);
+
+        if (intersects.length > 0) {
+            const clickedMesh = intersects[0].object as THREE.Mesh;
+            
+            // Find which tile was clicked
+            clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
         }
+    } else if (viewMode === 'planet') {
+        // For planet mode, intersect with planet mesh and find nearest tile
+        const planetMesh = hexasphere.getPlanetMesh();
+        if (planetMesh) {
+            const intersects = raycaster.intersectObject(planetMesh);
+            if (intersects.length > 0) {
+                const intersectionPoint = intersects[0].point;
+                
+                // Find the nearest tile to the intersection point
+                const tiles = hexasphere.getTiles();
+                let nearestTileIndex = 0;
+                let minDistance = Infinity;
+                
+                for (let i = 0; i < tiles.length; i++) {
+                    const tile = tiles[i];
+                    const distance = intersectionPoint.distanceTo(new THREE.Vector3(
+                        tile.centerPoint.x,
+                        tile.centerPoint.y,
+                        tile.centerPoint.z
+                    ));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestTileIndex = i;
+                    }
+                }
+                clickedTileIndex = nearestTileIndex;
+            }
+        }
+    }
+
+    if (clickedTileIndex !== -1) {
+        selectTile(clickedTileIndex);
     }
 }
 
@@ -697,3 +743,5 @@ setTimeout(() => {
 animate();
 
 console.log('🎉 Corrected Hexasphere with controls initialized!');
+
+

@@ -996,34 +996,65 @@ export class HexaSphere {
         console.log(`✅ Created ${this.tiles.length} tiles`);
     }
 
-    private createPlanetMesh() {
-        const geometry = new THREE.SphereGeometry(this.radius, 256, 256);
+    private async createPlanetMesh() {
+        const geometry = new THREE.SphereGeometry(this.radius, 256, 256); // moderate resolution
         const textureLoader = new THREE.TextureLoader();
 
-        const visualTexture = textureLoader.load("earth-blue-marble.jpg");
+        // --- Load textures asynchronously ---
+        const [visualTexture, continentMask] = await Promise.all([
+            textureLoader.loadAsync("earth-blue-marble.jpg"),
+            textureLoader.loadAsync("equirectangle_projection.png"),
+        ]);
+
+        // --- Planet color map ---
         visualTexture.wrapS = THREE.RepeatWrapping;
-        visualTexture.wrapT = THREE.ClampToEdgeWrapping;
+        visualTexture.wrapT = THREE.RepeatWrapping;
         visualTexture.colorSpace = THREE.SRGBColorSpace;
-        visualTexture.repeat.set(1, 1);
+        visualTexture.center.set(0.5, 0);
 
-        const continentMask = textureLoader.load("earth-bump.jpg");
-        continentMask.colorSpace = THREE.LinearSRGBColorSpace;
+        // --- Displacement map ---
+        continentMask.wrapS = THREE.RepeatWrapping;
         continentMask.wrapT = THREE.RepeatWrapping;
-        continentMask.wrapS = THREE.ClampToEdgeWrapping;
-        continentMask.repeat.set(1, 1);
+        continentMask.colorSpace = THREE.LinearSRGBColorSpace;
 
+        // Invert displacement
+        const invertDisplacement = (texture: THREE.Texture) => {
+            const image = texture.image as HTMLImageElement;
+            const canvas = document.createElement("canvas");
+            canvas.width = image.width;
+            canvas.height = image.height;
+            const ctx = canvas.getContext("2d")!;
+            ctx.drawImage(image, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                imgData.data[i] = 255 - imgData.data[i];       // R
+                imgData.data[i + 1] = 255 - imgData.data[i + 1]; // G
+                imgData.data[i + 2] = 255 - imgData.data[i + 2]; // B
+            }
+            ctx.putImageData(imgData, 0, 0);
+            texture.image = canvas;
+            texture.needsUpdate = true;
+        };
+        invertDisplacement(continentMask);
+
+        // --- Planet material ---
         const material = new THREE.MeshStandardMaterial({
             map: visualTexture,
             displacementMap: continentMask,
-            displacementScale: this.radius * 0.1, // how much continents rise
+            displacementScale: this.radius * 0.05,
         });
 
-        // Create mesh
+        // --- Rotate UVs if needed (optional, here rotation handles it) ---
+        const uvs = geometry.attributes.uv;
+        for (let i = 0; i < uvs.count; i++) {
+            uvs.setX(i, (uvs.getX(i) + 0.49) % 1);
+        }
+        uvs.needsUpdate = true;
+
+        // --- Create planet mesh ---
         this.planetMesh = new THREE.Mesh(geometry, material);
         this.planetMesh.renderOrder = 0;
         this.scene.add(this.planetMesh);
-
-        console.log(`🌍 Created planet mesh with extruded continents`);
     }
 
     private createAtmosphereMesh() {
@@ -1035,7 +1066,7 @@ export class HexaSphere {
             console.log("☁️ Cloud texture loaded successfully");
         });
 
-        const geometry = new THREE.SphereGeometry(this.radius * 1.12, 64, 64);
+        const geometry = new THREE.SphereGeometry(this.radius * 1.10, 64, 64);
 
         const cloudMaterial = new THREE.MeshStandardMaterial({
             map: atmosphereTexture,

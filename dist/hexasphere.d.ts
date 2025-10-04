@@ -24,6 +24,7 @@ export declare class HexaSphere {
     private tileLabels;
     private tileLabelCounts?;
     private planetMesh?;
+    private atmosphereMesh?;
     viewMode: 'planet' | 'tile' | 'both';
     constructor(radius: number, numDivisions: number, hexSize: number, scene: THREE.Scene, viewMode: 'planet' | 'tile' | 'both');
     private loadProjectionMap;
@@ -45,11 +46,17 @@ export declare class HexaSphere {
     createCurvedLine(startTileIndex: number, endTileIndex: number, color?: number, segments?: number): THREE.Mesh;
     clearPathLines(): void;
     clearTileLabels(): void;
+    private tileInstancedMesh?;
+    private instanceDummy;
     private createMeshes;
     private createPlanetMesh;
+    private createAtmosphereMesh;
     getTiles(): Tile[];
     getPlanetMesh(): THREE.Mesh | undefined;
+    getAtmosphereMesh(): THREE.Mesh | undefined;
+    animateAtmosphere(deltaTime: number): void;
     setTileColor(tileIndex: number, color: number): void;
+    getTileInstancedMesh(): THREE.InstancedMesh | undefined;
     regenerate(radius: number, numDivisions: number, hexSize: number): void;
 }
 

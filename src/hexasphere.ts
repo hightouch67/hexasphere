@@ -817,183 +817,197 @@ export class HexaSphere {
         this.tileLabelCounts = new Map<number, number>(); // Reset label counts
     }
 
+    private tileInstancedMesh?: THREE.InstancedMesh;
+    private instanceDummy = new THREE.Object3D();
+
     private createMeshes() {
-        const landColors = [0x7cfc00, 0x397d02, 0x77ee00, 0x61b329, 0x83f52c];
-        const oceanColors = [0x0f2342, 0x0f1e38, 0x1e3a8a];
-
-        for (const tile of this.tiles) {
-            if (tile.boundary.length < 3) continue;
-
-            // Get terrain info and elevation
-            const latLon = tile.getLatLon(this.radius);
-            const terrainInfo = this.getTerrainInfo(latLon.lat, latLon.lon);
-
-            // Calculate elevation multiplier based on terrain type
-            let elevationMultiplier = 0;
-            if (terrainInfo.type === 'mountain') {
-                elevationMultiplier = 0.08; // Moderate mountain height
-            } else if (terrainInfo.type === 'arctic' && terrainInfo.elevation > 150) {
-                elevationMultiplier = 0.06; // Snow-capped peaks
-            } else if (terrainInfo.type === 'desert') {
-                elevationMultiplier = 0.03; // Slight elevation for dunes/mesas
-            } else if (terrainInfo.type === 'forest') {
-                elevationMultiplier = 0.02; // Gentle hills
-            } else if (terrainInfo.type === 'city') { // Alien crystals
-                elevationMultiplier = 0.12; // Moderate crystal spires
-            }
-
-            const geometry = new THREE.BufferGeometry();
-            const vertices: number[] = [];
-            const indices: number[] = [];
-
-            if (elevationMultiplier > 0) {
-                // Create extruded geometry for elevated tiles (flat-topped)
-                const elevationHeight = (terrainInfo.elevation / 255) * elevationMultiplier * this.radius;
-
-                // Store original and elevated vertices
-                const baseVertices: number[] = [];
-                const topVertices: number[] = [];
-
-                // Add base vertices (original surface) and top vertices (elevated uniformly)
-                for (const bp of tile.boundary) {
-                    // Base vertices (on sphere surface)
-                    baseVertices.push(bp.x, bp.y, bp.z);
-
-                    // Calculate elevated position (uniform elevation for flat top)
-                    const length = Math.sqrt(bp.x * bp.x + bp.y * bp.y + bp.z * bp.z);
-                    const normalX = bp.x / length;
-                    const normalY = bp.y / length;
-                    const normalZ = bp.z / length;
-
-                    const elevatedX = bp.x + normalX * elevationHeight;
-                    const elevatedY = bp.y + normalY * elevationHeight;
-                    const elevatedZ = bp.z + normalZ * elevationHeight;
-
-                    topVertices.push(elevatedX, elevatedY, elevatedZ);
-                }
-
-                // Add all vertices to the geometry (base first, then top)
-                vertices.push(...baseVertices, ...topVertices);
-
-                const numBoundaryPoints = tile.boundary.length;
-
-                // Create top face triangles (elevated surface)
-                for (let j = 1; j < numBoundaryPoints - 1; j++) {
-                    indices.push(
-                        numBoundaryPoints,           // first top vertex (acts as center)
-                        numBoundaryPoints + j,       // top vertex j
-                        numBoundaryPoints + j + 1    // top vertex j+1
-                    );
-                }
-                if (numBoundaryPoints > 2) {
-                    indices.push(
-                        numBoundaryPoints,                           // first top vertex
-                        numBoundaryPoints + numBoundaryPoints - 1,   // last top vertex
-                        numBoundaryPoints + 1                       // second top vertex
-                    );
-                }
-
-                // Create side walls connecting base to top
-                for (let j = 0; j < numBoundaryPoints; j++) {
-                    const nextJ = (j + 1) % numBoundaryPoints;
-
-                    // Two triangles per side wall
-                    indices.push(
-                        j,                          // base vertex j
-                        nextJ,                      // base vertex j+1
-                        numBoundaryPoints + j       // top vertex j
-                    );
-
-                    indices.push(
-                        nextJ,                      // base vertex j+1
-                        numBoundaryPoints + nextJ,  // top vertex j+1
-                        numBoundaryPoints + j       // top vertex j
-                    );
-                }
-
-                // Create bottom face triangles (base surface) - facing inward
-                for (let j = 1; j < numBoundaryPoints - 1; j++) {
-                    indices.push(
-                        0,      // first base vertex (acts as center)
-                        j + 1,  // base vertex j+1 (reversed winding)
-                        j       // base vertex j
-                    );
-                }
-                if (numBoundaryPoints > 2) {
-                    indices.push(
-                        0,                      // first base vertex
-                        1,                      // second base vertex (reversed)
-                        numBoundaryPoints - 1   // last base vertex
-                    );
-                }
-
-            } else {
-                // Create simple flat geometry for non-elevated tiles
-                for (const bp of tile.boundary) {
-                    vertices.push(bp.x, bp.y, bp.z);
-                }
-
-                // Create triangles
-                for (let j = 1; j < tile.boundary.length - 1; j++) {
-                    indices.push(0, j, j + 1);
-                }
-                if (tile.boundary.length > 2) {
-                    indices.push(0, tile.boundary.length - 1, 1);
-                }
-            }
-
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            geometry.setIndex(indices);
-            geometry.computeVertexNormals();
-
-            // Add UV coordinates for texture mapping
-            const uvs: number[] = [];
-            if (elevationMultiplier > 0) {
-                // For elevated tiles, add UVs for both base and top vertices
-                for (const bp of tile.boundary) {
-                    // Convert 3D position to UV coordinates
-                    const lat = Math.asin(bp.y / this.radius) * 180 / Math.PI;
-                    const lon = Math.atan2(bp.z, bp.x) * 180 / Math.PI;
-                    const u = (lon + 180) / 360;
-                    const v = (lat + 90) / 180;
-                    uvs.push(u, v);
-                }
-                // Duplicate UVs for top vertices
-                uvs.push(...uvs);
-            } else {
-                // For flat tiles, add UVs for boundary vertices
-                for (const bp of tile.boundary) {
-                    // Convert 3D position to UV coordinates
-                    const lat = Math.asin(bp.y / this.radius) * 180 / Math.PI;
-                    const lon = Math.atan2(bp.z, bp.x) * 180 / Math.PI;
-                    const u = (lon + 180) / 360;
-                    const v = (lat + 90) / 180;
-                    uvs.push(u, v);
-                }
-            }
-            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-
-            const color = terrainInfo.color;
-
-            // Load visual texture (earth-blue-marble.jpg)
-            const textureLoader = new THREE.TextureLoader();
-            const visualTexture = textureLoader.load('earth-blue-marble.jpg');
-            visualTexture.wrapS = THREE.RepeatWrapping;
-            visualTexture.wrapT = THREE.RepeatWrapping;
-
-            const material = new THREE.MeshLambertMaterial({
-                color: color,
-                map: visualTexture,
-                transparent: true,
-                opacity: 0.9
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-            tile.mesh = mesh;
-            this.scene.add(mesh);
+        // Dispose any existing instanced mesh
+        if (this.tileInstancedMesh) {
+            this.scene.remove(this.tileInstancedMesh);
+            this.tileInstancedMesh.geometry.dispose();
+            (this.tileInstancedMesh.material as THREE.Material).dispose();
+            this.tileInstancedMesh = undefined;
         }
 
-        console.log(`✅ Created ${this.tiles.length} tiles`);
+        // If no tiles, nothing to do
+        if (!this.tiles || this.tiles.length === 0) return;
+
+        // Create a base hex geometry (flat, centered at origin, pointing +Y)
+        // We'll instance this many times and orient it to each tile normal.
+        const hexSides = 6;
+        const baseRadius = 1.0; // unit radius — we will scale each instance later
+        const baseVertices: number[] = [];
+        const baseIndices: number[] = [];
+
+        // center vertex
+        baseVertices.push(0, 0, 0);
+
+        // ring vertices (flat hex in XZ plane, Y up)
+        for (let i = 0; i < hexSides; i++) {
+            const ang = (i / hexSides) * Math.PI * 2;
+            const x = Math.cos(ang) * baseRadius;
+            const z = Math.sin(ang) * baseRadius;
+            baseVertices.push(x, 0, z);
+        }
+
+        // triangles (fan) - reverse winding for correct orientation after flip
+        for (let i = 1; i <= hexSides; i++) {
+            const a = 0;
+            const b = i === hexSides ? 1 : i + 1;
+            const c = i;
+            baseIndices.push(a, b, c);
+        }
+
+        const baseGeometry = new THREE.BufferGeometry();
+        baseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(baseVertices, 3));
+        baseGeometry.setIndex(baseIndices);
+        baseGeometry.computeVertexNormals();
+
+        // Single material for all instances; use vertex/instance colors
+        const material = new THREE.MeshStandardMaterial({
+            // We'll tint instance colors, so keep map optional
+            // If you want the marble texture applied, you'd need a single texture and proper UVs.
+            metalness: 0.1,
+            roughness: 0.8,
+            flatShading: false,
+            // side: THREE.DoubleSide, // Remove double side to allow culling
+        });
+
+        // Create instanced mesh
+        const count = this.tiles.length;
+        const instanced = new THREE.InstancedMesh(baseGeometry, material, count);
+        instanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        // Per-instance color attribute support: prefer setColorAt if available,
+        // otherwise create instanceColor attribute manually.
+        const supportSetColorAt = typeof (instanced as any).setColorAt === 'function';
+        if (!supportSetColorAt) {
+            // create fallback instanceColor attribute
+            const instanceColors = new Float32Array(count * 3);
+            instanced.instanceColor = new THREE.InstancedBufferAttribute(instanceColors, 3);
+            instanced.instanceColor.setUsage(THREE.DynamicDrawUsage);
+        }
+
+        // Helper vector/quaternion
+        const up = new THREE.Vector3(0, 1, 0);
+        const dummy = this.instanceDummy;
+        const quat = new THREE.Quaternion();
+        const posVec = new THREE.Vector3();
+
+        // Compute a reasonable scale for instances so their size approximates the tile.boundary size.
+        // We'll compute an average "tile radius" from the first tile that has a boundary.
+        let averageTileScale = 1;
+        for (let t = 0; t < this.tiles.length; t++) {
+            const b = this.tiles[t].boundary;
+            if (b && b.length > 0) {
+                // distance center->first boundary point
+                const cp = this.tiles[t].centerPoint;
+                const bp = b[0];
+                const dx = bp.x - cp.x;
+                const dy = bp.y - cp.y;
+                const dz = bp.z - cp.z;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                // Project onto tangent plane approximate: use distance minus radial difference
+                averageTileScale = dist; // this is a decent heuristic
+                break;
+            }
+        }
+        // scale factor since our base hex has radius 1.0
+        const globalScaleFactor = averageTileScale || 1;
+
+        // Build instances
+        for (let i = 0; i < this.tiles.length; i++) {
+
+            const tile = this.tiles[i];
+
+            // Get terrain info to compute elevation multiplier (keep your logic)
+            const latLon = tile.getLatLon(this.radius);
+            const terrainInfo = this.getBasicTerrainType ? this.getBasicTerrainType(latLon.lat, latLon.lon) : this.getTerrainInfo(latLon.lat, latLon.lon);
+            // We'll use getTerrainInfo (detailed) for elevation and color
+            const detailed = this.getTerrainInfo(latLon.lat, latLon.lon);
+
+            // Decide elevation multiplier (same logic you used in createMeshes previously)
+            let elevationMultiplier = 0;
+            if (detailed.type === 'mountain') {
+                elevationMultiplier = 0.08;
+            } else if (detailed.type === 'arctic' && detailed.elevation > 150) {
+                elevationMultiplier = 0.06;
+            } else if (detailed.type === 'desert') {
+                elevationMultiplier = 0.03;
+            } else if (detailed.type === 'forest') {
+                elevationMultiplier = 0.02;
+            } else if (detailed.type === 'city') {
+                elevationMultiplier = 0.12;
+            }
+
+            const elevationHeight = (detailed.elevation / 255) * elevationMultiplier * this.radius;
+
+            // Normal from center point
+            const cp = tile.centerPoint;
+            const length = Math.sqrt(cp.x * cp.x + cp.y * cp.y + cp.z * cp.z);
+            const nx = cp.x / length;
+            const ny = cp.y / length;
+            const nz = cp.z / length;
+            const normal = new THREE.Vector3(nx, ny, nz);
+
+            // Position the instance slightly above the sphere surface based on elevation
+            posVec.copy(normal).multiplyScalar(this.radius + elevationHeight);
+
+            // Build orientation: rotate base +Y to the normal direction
+            quat.setFromUnitVectors(up, normal);
+
+            // Apply to dummy object
+            dummy.position.copy(posVec);
+
+            // Original quaternion from normal
+            dummy.quaternion.copy(quat);
+
+            // Flip so hex faces outward
+            const flipQuat = new THREE.Quaternion();
+            flipQuat.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+            dummy.quaternion.multiply(flipQuat);
+
+            // Per-tile scale
+            let scale = globalScaleFactor;
+            if (tile.boundary && tile.boundary.length > 0) {
+                const cp = tile.centerPoint;
+                const bp = tile.boundary[0];
+                const dx = bp.x - cp.x;
+                const dy = bp.y - cp.y;
+                const dz = bp.z - cp.z;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                scale = dist * 0.98;
+            }
+            dummy.scale.set(scale, 1, scale);
+
+            dummy.updateMatrix();
+            instanced.setMatrixAt(i, dummy.matrix);
+
+            // Set instance color
+            const color = new THREE.Color(detailed.color);
+            if (supportSetColorAt) {
+                (instanced as any).setColorAt(i, color);
+            } else {
+                instanced.instanceColor!.setXYZ(i, color.r, color.g, color.b);
+            }
+
+            // Store a reference to the instanced mesh for compatibility — do NOT treat this as per-tile unique meshes.
+            tile.mesh = instanced; // NOTE: tile.mesh is the same object for every tile now
+        }
+
+        // Flag updates
+        instanced.instanceMatrix.needsUpdate = true;
+        if (!supportSetColorAt) {
+            instanced.instanceColor!.needsUpdate = true;
+        } else if ((instanced as any).instanceColor) {
+            (instanced as any).instanceColor.needsUpdate = true;
+        }
+
+        // Add to scene and keep reference
+        this.tileInstancedMesh = instanced;
+        this.scene.add(instanced);
+
+        console.log(`✅ InstancedMesh created with ${count} tiles.`);
     }
 
     private async createPlanetMesh() {
@@ -1102,20 +1116,48 @@ export class HexaSphere {
     }
 
     setTileColor(tileIndex: number, color: number) {
+        // If we have instanced mesh, update its instance color; otherwise fallback to per-tile mesh behavior
+        if (this.tileInstancedMesh) {
+            const instanced = this.tileInstancedMesh;
+            const supportSetColorAt = typeof (instanced as any).setColorAt === 'function';
+
+            const col = new THREE.Color(color);
+            if (supportSetColorAt) {
+                (instanced as any).setColorAt(tileIndex, col);
+            } else if (instanced.instanceColor) {
+                instanced.instanceColor.setXYZ(tileIndex, col.r, col.g, col.b);
+                instanced.instanceColor.needsUpdate = true;
+            } else {
+                // fallback: modify material color (will tint the whole instanced mesh) — not ideal
+                (instanced.material as THREE.MeshStandardMaterial).color.setHex(color);
+            }
+
+            // Mark update
+            instanced.instanceColor && (instanced.instanceColor as any).needsUpdate && (instanced.instanceColor as any).needsUpdate;
+            instanced.instanceMatrix && (instanced.instanceMatrix as any).needsUpdate && (instanced.instanceMatrix as any).needsUpdate;
+
+            return;
+        }
+
+        // Fallback: original per-tile mesh handling (in case instancing is not used)
         if (tileIndex >= 0 && tileIndex < this.tiles.length && this.tiles[tileIndex].mesh) {
             (this.tiles[tileIndex].mesh!.material as THREE.MeshLambertMaterial).color.setHex(color);
         }
     }
 
+    // Optional getter so external code can directly access the instanced mesh (if needed)
+    getTileInstancedMesh(): THREE.InstancedMesh | undefined {
+        return this.tileInstancedMesh;
+    }
+
     // Clear existing tiles and regenerate
     regenerate(radius: number, numDivisions: number, hexSize: number) {
         // Clear existing meshes
-        for (const tile of this.tiles) {
-            if (tile.mesh) {
-                this.scene.remove(tile.mesh);
-                tile.mesh.geometry.dispose();
-                (tile.mesh.material as THREE.Material).dispose();
-            }
+        if (this.tileInstancedMesh) {
+            this.scene.remove(this.tileInstancedMesh);
+            this.tileInstancedMesh.geometry.dispose();
+            (this.tileInstancedMesh.material as THREE.Material).dispose();
+            this.tileInstancedMesh = undefined;
         }
 
         // Clear 3D elements

@@ -11,8 +11,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setClearColor(0x000011, 1);
 
 // Add lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 10, 5);
@@ -96,19 +96,43 @@ function onTileClick(event: MouseEvent) {
     let clickedTileIndex = -1;
 
     if (viewMode === 'tile' || viewMode === 'both') {
-        // Get all tile meshes
-        const tileMeshes = hexasphere.getTiles()
-            .map(tile => tile.mesh)
-            .filter(mesh => mesh !== undefined) as THREE.Mesh[];
+        // Raycast the instanced mesh directly if available
+        const instanced = (hexasphere as any).getTileInstancedMesh ? (hexasphere as any).getTileInstancedMesh() : undefined;
 
-        // Check for intersections
-        const intersects = raycaster.intersectObjects(tileMeshes);
+        if (instanced) {
+            const intersects = raycaster.intersectObject(instanced);
+            if (intersects.length > 0) {
+                const intr = intersects[0];
+                // For InstancedMesh, the intersection result has instanceId
+                const instanceId = (intr as any).instanceId;
+                if (typeof instanceId === 'number' && instanceId >= 0) {
+                    clickedTileIndex = instanceId;
+                } else {
+                    // Fallback: if instanceId not present, fall back to nearest tile by point
+                    const intersectionPoint = intr.point;
+                    const tiles = hexasphere.getTiles();
+                    let nearest = -1;
+                    let minDist = Infinity;
+                    for (let i = 0; i < tiles.length; i++) {
+                        const t = tiles[i];
+                        const d = intersectionPoint.distanceTo(new THREE.Vector3(t.centerPoint.x, t.centerPoint.y, t.centerPoint.z));
+                        if (d < minDist) { minDist = d; nearest = i; }
+                    }
+                    clickedTileIndex = nearest;
+                }
+            }
+        } else {
+            // If no instanced mesh present (fallback), use original behavior
+            const tileMeshes = hexasphere.getTiles()
+                .map(tile => tile.mesh)
+                .filter(mesh => mesh !== undefined) as THREE.Mesh[];
 
-        if (intersects.length > 0) {
-            const clickedMesh = intersects[0].object as THREE.Mesh;
-            
-            // Find which tile was clicked
-            clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
+            const intersects = raycaster.intersectObjects(tileMeshes);
+
+            if (intersects.length > 0) {
+                const clickedMesh = intersects[0].object as THREE.Mesh;
+                clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
+            }
         }
     } else if (viewMode === 'planet') {
         // For planet mode, intersect with planet mesh and find nearest tile
@@ -117,12 +141,12 @@ function onTileClick(event: MouseEvent) {
             const intersects = raycaster.intersectObject(planetMesh);
             if (intersects.length > 0) {
                 const intersectionPoint = intersects[0].point;
-                
+
                 // Find the nearest tile to the intersection point
                 const tiles = hexasphere.getTiles();
                 let nearestTileIndex = 0;
                 let minDistance = Infinity;
-                
+
                 for (let i = 0; i < tiles.length; i++) {
                     const tile = tiles[i];
                     const distance = intersectionPoint.distanceTo(new THREE.Vector3(

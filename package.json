@@ -12,7 +12,8 @@
     "build": "vite build",
     "dev": "vite dev",
     "type-check": "tsc --noEmit",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tojs": "tsc main.ts --module esnext --target es6 --lib es2017,DOM --skipLibCheck"
   },
   "devDependencies": {
     "@types/three": "^0.180.0",

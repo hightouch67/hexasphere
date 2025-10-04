@@ -1,50 +1,48 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var THREE = require("three");
-var hexasphere_1 = require("./src/hexasphere");
+import * as THREE from 'three';
+import { HexaSphere } from './src/hexasphere';
 // Initialize Three.js scene
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-var renderer = new THREE.WebGLRenderer({ antialias: true });
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setClearColor(0x000011, 1);
 // Add lighting
-var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
-var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 10, 5);
 scene.add(directionalLight);
 // Position camera
 camera.position.z = 80;
 // Toggle for no-draw mode
-var viewMode = 'tile'; // Options: 'tile', 'planet', or 'both'
+const viewMode = 'tile'; // Options: 'tile', 'planet', or 'both'
 // Create initial hexasphere
-var hexasphere = new hexasphere_1.HexaSphere(25, 20, 0.98, scene, viewMode);
+let hexasphere = new HexaSphere(25, 20, 0.98, scene, viewMode);
 // Output tile coordinates to console (no drawing)
 function logTileCoordinates() {
-    var tiles = hexasphere.getTiles();
-    tiles.forEach(function (tile, idx) {
+    const tiles = hexasphere.getTiles();
+    tiles.forEach((tile, idx) => {
         // Output center and boundary points
-        console.log("Tile ".concat(idx, ": center="), tile.centerPoint, 'boundary=', tile.boundary);
+        console.log(`Tile ${idx}: center=`, tile.centerPoint, 'boundary=', tile.boundary);
     });
 }
 logTileCoordinates();
 // Add sample city labels after hexasphere is ready
-setTimeout(function () {
+setTimeout(() => {
     addSampleCities();
     // Update tile visibility initially
     hexasphere.updateTileVisibility(camera);
 }, 1000);
 // Mouse controls and tile selection
-var mouseDown = false;
-var mouseX = 0, mouseY = 0;
-var selectedTileIndex = -1;
-var pathfindingStartTile = -1;
-var pathfindingEndTile = -1;
-var currentPath = [];
-var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2();
+let mouseDown = false;
+let mouseX = 0, mouseY = 0;
+let selectedTileIndex = -1;
+let pathfindingStartTile = -1;
+let pathfindingEndTile = -1;
+let currentPath = [];
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 function onMouseDown(event) {
     mouseDown = true;
     mouseX = event.clientX;
@@ -53,8 +51,8 @@ function onMouseDown(event) {
 function onMouseUp(event) {
     if (mouseDown) {
         // Only trigger click if mouse didn't move much (to distinguish from drag)
-        var deltaX = Math.abs(event.clientX - mouseX);
-        var deltaY = Math.abs(event.clientY - mouseY);
+        const deltaX = Math.abs(event.clientX - mouseX);
+        const deltaY = Math.abs(event.clientY - mouseY);
         if (deltaX < 5 && deltaY < 5) {
             onTileClick(event);
         }
@@ -64,8 +62,8 @@ function onMouseUp(event) {
 function onMouseMove(event) {
     if (!mouseDown)
         return;
-    var deltaX = event.clientX - mouseX;
-    var deltaY = event.clientY - mouseY;
+    const deltaX = event.clientX - mouseX;
+    const deltaY = event.clientY - mouseY;
     scene.rotation.y += deltaX * 0.005;
     scene.rotation.x += deltaY * 0.005;
     // Update tile visibility when rotating the view
@@ -79,28 +77,28 @@ function onTileClick(event) {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     // Update raycaster
     raycaster.setFromCamera(mouse, camera);
-    var clickedTileIndex = -1;
+    let clickedTileIndex = -1;
     if (viewMode === 'tile' || viewMode === 'both') {
         // Raycast the instanced mesh directly if available
-        var instanced = hexasphere.getTileInstancedMesh ? hexasphere.getTileInstancedMesh() : undefined;
+        const instanced = hexasphere.getTileInstancedMesh ? hexasphere.getTileInstancedMesh() : undefined;
         if (instanced) {
-            var intersects = raycaster.intersectObject(instanced);
+            const intersects = raycaster.intersectObject(instanced);
             if (intersects.length > 0) {
-                var intr = intersects[0];
+                const intr = intersects[0];
                 // For InstancedMesh, the intersection result has instanceId
-                var instanceId = intr.instanceId;
+                const instanceId = intr.instanceId;
                 if (typeof instanceId === 'number' && instanceId >= 0) {
                     clickedTileIndex = instanceId;
                 }
                 else {
                     // Fallback: if instanceId not present, fall back to nearest tile by point
-                    var intersectionPoint = intr.point;
-                    var tiles = hexasphere.getTiles();
-                    var nearest = -1;
-                    var minDist = Infinity;
-                    for (var i = 0; i < tiles.length; i++) {
-                        var t = tiles[i];
-                        var d = intersectionPoint.distanceTo(new THREE.Vector3(t.centerPoint.x, t.centerPoint.y, t.centerPoint.z));
+                    const intersectionPoint = intr.point;
+                    const tiles = hexasphere.getTiles();
+                    let nearest = -1;
+                    let minDist = Infinity;
+                    for (let i = 0; i < tiles.length; i++) {
+                        const t = tiles[i];
+                        const d = intersectionPoint.distanceTo(new THREE.Vector3(t.centerPoint.x, t.centerPoint.y, t.centerPoint.z));
                         if (d < minDist) {
                             minDist = d;
                             nearest = i;
@@ -112,30 +110,30 @@ function onTileClick(event) {
         }
         else {
             // If no instanced mesh present (fallback), use original behavior
-            var tileMeshes = hexasphere.getTiles()
-                .map(function (tile) { return tile.mesh; })
-                .filter(function (mesh) { return mesh !== undefined; });
-            var intersects = raycaster.intersectObjects(tileMeshes);
+            const tileMeshes = hexasphere.getTiles()
+                .map(tile => tile.mesh)
+                .filter(mesh => mesh !== undefined);
+            const intersects = raycaster.intersectObjects(tileMeshes);
             if (intersects.length > 0) {
-                var clickedMesh_1 = intersects[0].object;
-                clickedTileIndex = hexasphere.getTiles().findIndex(function (tile) { return tile.mesh === clickedMesh_1; });
+                const clickedMesh = intersects[0].object;
+                clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
             }
         }
     }
     else if (viewMode === 'planet') {
         // For planet mode, intersect with planet mesh and find nearest tile
-        var planetMesh = hexasphere.getPlanetMesh();
+        const planetMesh = hexasphere.getPlanetMesh();
         if (planetMesh) {
-            var intersects = raycaster.intersectObject(planetMesh);
+            const intersects = raycaster.intersectObject(planetMesh);
             if (intersects.length > 0) {
-                var intersectionPoint = intersects[0].point;
+                const intersectionPoint = intersects[0].point;
                 // Find the nearest tile to the intersection point
-                var tiles = hexasphere.getTiles();
-                var nearestTileIndex = 0;
-                var minDistance = Infinity;
-                for (var i = 0; i < tiles.length; i++) {
-                    var tile = tiles[i];
-                    var distance = intersectionPoint.distanceTo(new THREE.Vector3(tile.centerPoint.x, tile.centerPoint.y, tile.centerPoint.z));
+                const tiles = hexasphere.getTiles();
+                let nearestTileIndex = 0;
+                let minDistance = Infinity;
+                for (let i = 0; i < tiles.length; i++) {
+                    const tile = tiles[i];
+                    const distance = intersectionPoint.distanceTo(new THREE.Vector3(tile.centerPoint.x, tile.centerPoint.y, tile.centerPoint.z));
                     if (distance < minDistance) {
                         minDistance = distance;
                         nearestTileIndex = i;
@@ -150,8 +148,8 @@ function onTileClick(event) {
     }
 }
 function selectTile(tileIndex) {
-    var tiles = hexasphere.getTiles();
-    var pathfindingMode = document.getElementById('pathfindingMode').checked;
+    const tiles = hexasphere.getTiles();
+    const pathfindingMode = document.getElementById('pathfindingMode').checked;
     if (pathfindingMode) {
         handlePathfindingSelection(tileIndex);
     }
@@ -160,29 +158,27 @@ function selectTile(tileIndex) {
     }
 }
 function handleNormalSelection(tileIndex) {
-    var tiles = hexasphere.getTiles();
+    const tiles = hexasphere.getTiles();
     // Clear any existing path
     clearPath();
     // Reset previous selection
     if (selectedTileIndex !== -1 && selectedTileIndex < tiles.length) {
         resetTileColor(selectedTileIndex);
         // Reset neighbors
-        for (var _i = 0, _a = tiles[selectedTileIndex].neighbors; _i < _a.length; _i++) {
-            var neighbor = _a[_i];
-            var neighborIndex = tiles.indexOf(neighbor);
+        for (const neighbor of tiles[selectedTileIndex].neighbors) {
+            const neighborIndex = tiles.indexOf(neighbor);
             if (neighborIndex !== -1) {
                 resetTileColor(neighborIndex);
             }
         }
     }
     selectedTileIndex = tileIndex;
-    var selectedTile = tiles[tileIndex];
+    const selectedTile = tiles[tileIndex];
     // Highlight selected tile in bright yellow
     hexasphere.setTileColor(tileIndex, 0xffff00);
     // Highlight neighbors in orange
-    for (var _b = 0, _c = selectedTile.neighbors; _b < _c.length; _b++) {
-        var neighbor = _c[_b];
-        var neighborIndex = tiles.indexOf(neighbor);
+    for (const neighbor of selectedTile.neighbors) {
+        const neighborIndex = tiles.indexOf(neighbor);
         if (neighborIndex !== -1) {
             hexasphere.setTileColor(neighborIndex, 0xff8800);
         }
@@ -191,7 +187,7 @@ function handleNormalSelection(tileIndex) {
     updateTileInfo(selectedTile, tileIndex);
 }
 function handlePathfindingSelection(tileIndex) {
-    var tiles = hexasphere.getTiles();
+    const tiles = hexasphere.getTiles();
     if (pathfindingStartTile === -1) {
         // First tile selection - set as start
         clearPath();
@@ -207,8 +203,8 @@ function handlePathfindingSelection(tileIndex) {
         // Highlight end tile in red
         hexasphere.setTileColor(tileIndex, 0xff0000);
         // Find and display path
-        var startTile = tiles[pathfindingStartTile];
-        var endTile = tiles[pathfindingEndTile];
+        const startTile = tiles[pathfindingStartTile];
+        const endTile = tiles[pathfindingEndTile];
         currentPath = hexasphere.findPath(startTile, endTile);
         displayPath();
         updatePathfindingInfo('complete', tileIndex);
@@ -224,7 +220,7 @@ function handlePathfindingSelection(tileIndex) {
     }
 }
 function clearPath() {
-    var tiles = hexasphere.getTiles();
+    const tiles = hexasphere.getTiles();
     // Reset start tile
     if (pathfindingStartTile !== -1) {
         resetTileColor(pathfindingStartTile);
@@ -234,9 +230,8 @@ function clearPath() {
         resetTileColor(pathfindingEndTile);
     }
     // Reset path tiles
-    for (var _i = 0, currentPath_1 = currentPath; _i < currentPath_1.length; _i++) {
-        var pathTile = currentPath_1[_i];
-        var pathIndex = tiles.indexOf(pathTile);
+    for (const pathTile of currentPath) {
+        const pathIndex = tiles.indexOf(pathTile);
         if (pathIndex !== -1) {
             resetTileColor(pathIndex);
         }
@@ -246,37 +241,37 @@ function clearPath() {
     currentPath = [];
 }
 function displayPath() {
-    var tiles = hexasphere.getTiles();
+    const tiles = hexasphere.getTiles();
     // Highlight path tiles in cyan (skip start and end tiles)
-    for (var i = 1; i < currentPath.length - 1; i++) {
-        var pathTile = currentPath[i];
-        var pathIndex = tiles.indexOf(pathTile);
+    for (let i = 1; i < currentPath.length - 1; i++) {
+        const pathTile = currentPath[i];
+        const pathIndex = tiles.indexOf(pathTile);
         if (pathIndex !== -1) {
             hexasphere.setTileColor(pathIndex, 0x00ffff);
         }
     }
     // Create ONE single curved line through the entire path
     if (currentPath.length >= 2) {
-        var startIndex = tiles.indexOf(currentPath[0]);
-        var endIndex = tiles.indexOf(currentPath[currentPath.length - 1]);
+        const startIndex = tiles.indexOf(currentPath[0]);
+        const endIndex = tiles.indexOf(currentPath[currentPath.length - 1]);
         if (startIndex !== -1 && endIndex !== -1) {
             hexasphere.createCurvedLine(startIndex, endIndex, 0x00ffff, 30);
         }
     }
 }
 function resetTileColor(tileIndex) {
-    var tile = hexasphere.getTiles()[tileIndex];
-    var latLon = tile.getLatLon(hexasphere.radius);
+    const tile = hexasphere.getTiles()[tileIndex];
+    const latLon = tile.getLatLon(hexasphere.radius);
     // Get the actual terrain info to restore the correct color
-    var terrainInfo = hexasphere.getTerrainInfo(latLon.lat, latLon.lon);
+    const terrainInfo = hexasphere.getTerrainInfo(latLon.lat, latLon.lon);
     // Use the terrain's actual color
     hexasphere.setTileColor(tileIndex, terrainInfo.color);
 }
 function updateTileInfo(tile, tileIndex) {
-    var latLon = tile.getLatLon(hexasphere.radius);
-    var terrainInfo = hexasphere.getTerrainInfo(latLon.lat, latLon.lon);
+    const latLon = tile.getLatLon(hexasphere.radius);
+    const terrainInfo = hexasphere.getTerrainInfo(latLon.lat, latLon.lon);
     // Calculate 3D elevation effect
-    var elevationMultiplier = 0;
+    let elevationMultiplier = 0;
     if (terrainInfo.type === 'mountain') {
         elevationMultiplier = 0.15;
     }
@@ -292,34 +287,86 @@ function updateTileInfo(tile, tileIndex) {
     else if (terrainInfo.type === 'city') {
         elevationMultiplier = 0.2;
     }
-    var heightAboveSurface = (terrainInfo.elevation / 255) * elevationMultiplier * hexasphere.radius;
-    var tileInfoElement = document.getElementById('tileInfo');
-    tileInfoElement.innerHTML = "\n        <h4>Selected Tile #".concat(tileIndex, "</h4>\n        <p><strong>Terrain:</strong> ").concat(terrainInfo.type.charAt(0).toUpperCase() + terrainInfo.type.slice(1), "</p>\n        <p><strong>Base Elevation:</strong> ").concat(terrainInfo.elevation.toFixed(0), "m</p>\n        ").concat(heightAboveSurface > 0 ? "<p><strong>3D Height:</strong> +".concat(heightAboveSurface.toFixed(1), " units above surface</p>") : '', "\n        <p><strong>Temperature:</strong> ").concat(terrainInfo.temperature.toFixed(1), "\u00B0C</p>\n        <p><strong>Latitude:</strong> ").concat(latLon.lat.toFixed(2), "\u00B0</p>\n        <p><strong>Longitude:</strong> ").concat(latLon.lon.toFixed(2), "\u00B0</p>\n        <p><strong>Boundary Points:</strong> ").concat(tile.boundary.length, "</p>\n        <p><strong>Neighbors:</strong> ").concat(tile.neighbors.length, "</p>\n        \n        <h5>Neighbor Details:</h5>\n        <div style=\"max-height: 150px; overflow-y: auto; font-size: 11px;\">\n            ").concat(tile.neighbors.map(function (neighbor, idx) {
-        var neighborLatLon = neighbor.getLatLon(hexasphere.radius);
-        var neighborTerrain = hexasphere.getTerrainInfo(neighborLatLon.lat, neighborLatLon.lon);
-        return "\n                    <div style=\"margin: 5px 0; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 3px;\">\n                        <strong>Neighbor ".concat(idx + 1, ":</strong> ").concat(neighborTerrain.type, "<br>\n                        Lat: ").concat(neighborLatLon.lat.toFixed(1), "\u00B0, Lon: ").concat(neighborLatLon.lon.toFixed(1), "\u00B0<br>\n                        Elev: ").concat(neighborTerrain.elevation.toFixed(0), "m, Temp: ").concat(neighborTerrain.temperature.toFixed(1), "\u00B0C\n                    </div>\n                ");
-    }).join(''), "\n        </div>\n        \n        <p style=\"font-size: 11px; color: #ccc; margin-top: 10px;\">\n            Click another tile to select it, or click empty space to deselect.\n        </p>\n    ");
+    const heightAboveSurface = (terrainInfo.elevation / 255) * elevationMultiplier * hexasphere.radius;
+    const tileInfoElement = document.getElementById('tileInfo');
+    tileInfoElement.innerHTML = `
+        <h4>Selected Tile #${tileIndex}</h4>
+        <p><strong>Terrain:</strong> ${terrainInfo.type.charAt(0).toUpperCase() + terrainInfo.type.slice(1)}</p>
+        <p><strong>Base Elevation:</strong> ${terrainInfo.elevation.toFixed(0)}m</p>
+        ${heightAboveSurface > 0 ? `<p><strong>3D Height:</strong> +${heightAboveSurface.toFixed(1)} units above surface</p>` : ''}
+        <p><strong>Temperature:</strong> ${terrainInfo.temperature.toFixed(1)}°C</p>
+        <p><strong>Latitude:</strong> ${latLon.lat.toFixed(2)}°</p>
+        <p><strong>Longitude:</strong> ${latLon.lon.toFixed(2)}°</p>
+        <p><strong>Boundary Points:</strong> ${tile.boundary.length}</p>
+        <p><strong>Neighbors:</strong> ${tile.neighbors.length}</p>
+        
+        <h5>Neighbor Details:</h5>
+        <div style="max-height: 150px; overflow-y: auto; font-size: 11px;">
+            ${tile.neighbors.map((neighbor, idx) => {
+        const neighborLatLon = neighbor.getLatLon(hexasphere.radius);
+        const neighborTerrain = hexasphere.getTerrainInfo(neighborLatLon.lat, neighborLatLon.lon);
+        return `
+                    <div style="margin: 5px 0; padding: 5px; background: rgba(255,255,255,0.1); border-radius: 3px;">
+                        <strong>Neighbor ${idx + 1}:</strong> ${neighborTerrain.type}<br>
+                        Lat: ${neighborLatLon.lat.toFixed(1)}°, Lon: ${neighborLatLon.lon.toFixed(1)}°<br>
+                        Elev: ${neighborTerrain.elevation.toFixed(0)}m, Temp: ${neighborTerrain.temperature.toFixed(1)}°C
+                    </div>
+                `;
+    }).join('')}
+        </div>
+        
+        <p style="font-size: 11px; color: #ccc; margin-top: 10px;">
+            Click another tile to select it, or click empty space to deselect.
+        </p>
+    `;
 }
 function updatePathfindingInfo(mode, tileIndex) {
-    var tileInfoElement = document.getElementById('tileInfo');
-    var tiles = hexasphere.getTiles();
+    const tileInfoElement = document.getElementById('tileInfo');
+    const tiles = hexasphere.getTiles();
     if (mode === 'start') {
-        var tile = tiles[tileIndex];
-        var latLon = tile.getLatLon(hexasphere.radius);
-        var isLand = hexasphere.isLandPublic(latLon.lat, latLon.lon);
-        tileInfoElement.innerHTML = "\n            <h4>\uD83C\uDFAF Pathfinding Mode</h4>\n            <div style=\"padding: 10px; background: rgba(0,255,0,0.2); border-radius: 5px; margin-bottom: 10px;\">\n                <h5 style=\"margin: 0; color: #00ff00;\">Start Tile #".concat(tileIndex, "</h5>\n                <p><strong>Type:</strong> ").concat(isLand ? 'Land' : 'Ocean', "</p>\n                <p><strong>Lat:</strong> ").concat(latLon.lat.toFixed(2), "\u00B0, <strong>Lon:</strong> ").concat(latLon.lon.toFixed(2), "\u00B0</p>\n            </div>\n            <p style=\"font-size: 12px; color: #ccc;\">\n                \uD83C\uDFAF <strong>Next:</strong> Click another tile to set the destination and find the shortest path!\n            </p>\n        ");
+        const tile = tiles[tileIndex];
+        const latLon = tile.getLatLon(hexasphere.radius);
+        const isLand = hexasphere.isLandPublic(latLon.lat, latLon.lon);
+        tileInfoElement.innerHTML = `
+            <h4>🎯 Pathfinding Mode</h4>
+            <div style="padding: 10px; background: rgba(0,255,0,0.2); border-radius: 5px; margin-bottom: 10px;">
+                <h5 style="margin: 0; color: #00ff00;">Start Tile #${tileIndex}</h5>
+                <p><strong>Type:</strong> ${isLand ? 'Land' : 'Ocean'}</p>
+                <p><strong>Lat:</strong> ${latLon.lat.toFixed(2)}°, <strong>Lon:</strong> ${latLon.lon.toFixed(2)}°</p>
+            </div>
+            <p style="font-size: 12px; color: #ccc;">
+                🎯 <strong>Next:</strong> Click another tile to set the destination and find the shortest path!
+            </p>
+        `;
     }
     else if (mode === 'complete') {
-        var startTile = tiles[pathfindingStartTile];
-        var endTile = tiles[pathfindingEndTile];
-        var startLatLon = startTile.getLatLon(hexasphere.radius);
-        var endLatLon = endTile.getLatLon(hexasphere.radius);
-        tileInfoElement.innerHTML = "\n            <h4>\uD83D\uDEE4\uFE0F Path Found!</h4>\n            <div style=\"padding: 8px; background: rgba(0,255,0,0.2); border-radius: 5px; margin-bottom: 8px;\">\n                <h6 style=\"margin: 0; color: #00ff00;\">Start: Tile #".concat(pathfindingStartTile, "</h6>\n                <p style=\"margin: 2px 0; font-size: 11px;\">Lat: ").concat(startLatLon.lat.toFixed(1), "\u00B0, Lon: ").concat(startLatLon.lon.toFixed(1), "\u00B0</p>\n            </div>\n            <div style=\"padding: 8px; background: rgba(255,0,0,0.2); border-radius: 5px; margin-bottom: 8px;\">\n                <h6 style=\"margin: 0; color: #ff0000;\">End: Tile #").concat(pathfindingEndTile, "</h6>\n                <p style=\"margin: 2px 0; font-size: 11px;\">Lat: ").concat(endLatLon.lat.toFixed(1), "\u00B0, Lon: ").concat(endLatLon.lon.toFixed(1), "\u00B0</p>\n            </div>\n            <div style=\"padding: 8px; background: rgba(0,255,255,0.2); border-radius: 5px; margin-bottom: 10px;\">\n                <h6 style=\"margin: 0; color: #00ffff;\">Path Length: ").concat(currentPath.length, " tiles</h6>\n                <p style=\"margin: 2px 0; font-size: 11px;\">Distance: ").concat((currentPath.length - 1), " hops</p>\n            </div>\n            <p style=\"font-size: 11px; color: #ccc;\">\n                Click another tile to start a new path.\n            </p>\n        ");
+        const startTile = tiles[pathfindingStartTile];
+        const endTile = tiles[pathfindingEndTile];
+        const startLatLon = startTile.getLatLon(hexasphere.radius);
+        const endLatLon = endTile.getLatLon(hexasphere.radius);
+        tileInfoElement.innerHTML = `
+            <h4>🛤️ Path Found!</h4>
+            <div style="padding: 8px; background: rgba(0,255,0,0.2); border-radius: 5px; margin-bottom: 8px;">
+                <h6 style="margin: 0; color: #00ff00;">Start: Tile #${pathfindingStartTile}</h6>
+                <p style="margin: 2px 0; font-size: 11px;">Lat: ${startLatLon.lat.toFixed(1)}°, Lon: ${startLatLon.lon.toFixed(1)}°</p>
+            </div>
+            <div style="padding: 8px; background: rgba(255,0,0,0.2); border-radius: 5px; margin-bottom: 8px;">
+                <h6 style="margin: 0; color: #ff0000;">End: Tile #${pathfindingEndTile}</h6>
+                <p style="margin: 2px 0; font-size: 11px;">Lat: ${endLatLon.lat.toFixed(1)}°, Lon: ${endLatLon.lon.toFixed(1)}°</p>
+            </div>
+            <div style="padding: 8px; background: rgba(0,255,255,0.2); border-radius: 5px; margin-bottom: 10px;">
+                <h6 style="margin: 0; color: #00ffff;">Path Length: ${currentPath.length} tiles</h6>
+                <p style="margin: 2px 0; font-size: 11px;">Distance: ${(currentPath.length - 1)} hops</p>
+            </div>
+            <p style="font-size: 11px; color: #ccc;">
+                Click another tile to start a new path.
+            </p>
+        `;
     }
 }
 // Add sample cities using 2D projection map approach
 function addSampleCities() {
-    var cities = [
+    const cities = [
         { name: "Tokyo", lat: 35.6762, lon: 139.6503, color: 0xffff00 },
         { name: "Moscow", lat: 55.7558, lon: 37.6173, color: 0x00ff00 },
         { name: "New York", lat: 40.7128, lon: -74.0060, color: 0xff4444 },
@@ -336,25 +383,24 @@ function addSampleCities() {
         { name: "Rio de Janeiro", lat: -22.9068, lon: -43.1729, color: 0x00ff00 },
         { name: "Toronto", lat: 43.6532, lon: -79.3832, color: 0x800080 }
     ];
-    var tiles = hexasphere.getTiles();
-    var placedCities = [];
+    const tiles = hexasphere.getTiles();
+    const placedCities = [];
     console.log("🗺️ Finding cities using 2D projection map approach...");
     // Get the actual projection map dimensions from the hexasphere
-    var projectionCanvas = hexasphere.projectionCanvas;
-    var projectionData = hexasphere.projectionData;
+    const projectionCanvas = hexasphere.projectionCanvas;
+    const projectionData = hexasphere.projectionData;
     if (!projectionCanvas || !projectionData) {
         console.log("❌ Projection map not loaded, falling back to simple lat/lon matching");
         // Fallback to simple approach
-        for (var _i = 0, cities_1 = cities; _i < cities_1.length; _i++) {
-            var city = cities_1[_i];
-            var closestTileIndex = 0;
-            var minDistance = Infinity;
-            for (var i = 0; i < tiles.length; i++) {
-                var tileLatLon = tiles[i].getLatLon(hexasphere.radius);
-                var latDiff = Math.abs(tileLatLon.lat - city.lat);
-                var lonDiff = Math.abs(tileLatLon.lon - city.lon);
-                var lonDistance = Math.min(lonDiff, 360 - lonDiff);
-                var distance = Math.sqrt(latDiff * latDiff + lonDistance * lonDistance * 0.5);
+        for (const city of cities) {
+            let closestTileIndex = 0;
+            let minDistance = Infinity;
+            for (let i = 0; i < tiles.length; i++) {
+                const tileLatLon = tiles[i].getLatLon(hexasphere.radius);
+                const latDiff = Math.abs(tileLatLon.lat - city.lat);
+                const lonDiff = Math.abs(tileLatLon.lon - city.lon);
+                const lonDistance = Math.min(lonDiff, 360 - lonDiff);
+                const distance = Math.sqrt(latDiff * latDiff + lonDistance * lonDistance * 0.5);
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestTileIndex = i;
@@ -365,54 +411,53 @@ function addSampleCities() {
         }
         return;
     }
-    var mapWidth = projectionCanvas.width;
-    var mapHeight = projectionCanvas.height;
-    console.log("\uD83D\uDCD0 Projection map dimensions: ".concat(mapWidth, "x").concat(mapHeight));
-    for (var _a = 0, cities_2 = cities; _a < cities_2.length; _a++) {
-        var city = cities_2[_a];
+    const mapWidth = projectionCanvas.width;
+    const mapHeight = projectionCanvas.height;
+    console.log(`📐 Projection map dimensions: ${mapWidth}x${mapHeight}`);
+    for (const city of cities) {
         // Invert the latitude for tile selection
-        var invertedLat = -city.lat;
-        console.log("\uD83D\uDCCD ".concat(city.name, ": lat=").concat(city.lat, "\u00B0, lon=").concat(city.lon, "\u00B0 -> inverted lat=").concat(invertedLat, "\u00B0"));
+        const invertedLat = -city.lat;
+        console.log(`📍 ${city.name}: lat=${city.lat}°, lon=${city.lon}° -> inverted lat=${invertedLat}°`);
         // Find the tile whose center point is closest to the inverted city coordinates
-        var closestTileIndex = 0;
-        var minDistance = Infinity;
-        for (var i = 0; i < tiles.length; i++) {
-            var tileLatLon_1 = tiles[i].getLatLon(hexasphere.radius);
+        let closestTileIndex = 0;
+        let minDistance = Infinity;
+        for (let i = 0; i < tiles.length; i++) {
+            const tileLatLon = tiles[i].getLatLon(hexasphere.radius);
             // Calculate distance between inverted city coordinates and tile coordinates
-            var latDiff = invertedLat - tileLatLon_1.lat;
-            var lonDiff = city.lon - tileLatLon_1.lon;
-            var distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff);
+            const latDiff = invertedLat - tileLatLon.lat;
+            const lonDiff = city.lon - tileLatLon.lon;
+            const distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestTileIndex = i;
             }
         }
         // Get the closest tile's coordinates
-        var tileLatLon = tiles[closestTileIndex].getLatLon(hexasphere.radius);
-        var isLand = hexasphere.isLandPublic(tileLatLon.lat, tileLatLon.lon);
+        const tileLatLon = tiles[closestTileIndex].getLatLon(hexasphere.radius);
+        const isLand = hexasphere.isLandPublic(tileLatLon.lat, tileLatLon.lon);
         // Place the city
         hexasphere.addTileLabel(closestTileIndex, city.name, city.color, 8);
         placedCities.push(city.name);
-        console.log("\uD83C\uDFD9\uFE0F Placed ".concat(city.name, " on tile ").concat(closestTileIndex));
-        console.log("   Target: ".concat(city.lat.toFixed(2), "\u00B0, ").concat(city.lon.toFixed(2), "\u00B0"));
-        console.log("   Inverted lat: ".concat(invertedLat.toFixed(2), "\u00B0"));
-        console.log("   Tile: ".concat(tileLatLon.lat.toFixed(2), "\u00B0, ").concat(tileLatLon.lon.toFixed(2), "\u00B0"));
-        console.log("   Distance: ".concat(minDistance.toFixed(2), "\u00B0"));
-        console.log("   Land: ".concat(isLand ? 'YES' : 'NO'));
+        console.log(`🏙️ Placed ${city.name} on tile ${closestTileIndex}`);
+        console.log(`   Target: ${city.lat.toFixed(2)}°, ${city.lon.toFixed(2)}°`);
+        console.log(`   Inverted lat: ${invertedLat.toFixed(2)}°`);
+        console.log(`   Tile: ${tileLatLon.lat.toFixed(2)}°, ${tileLatLon.lon.toFixed(2)}°`);
+        console.log(`   Distance: ${minDistance.toFixed(2)}°`);
+        console.log(`   Land: ${isLand ? 'YES' : 'NO'}`);
     }
-    console.log("\u2705 Successfully placed ".concat(placedCities.length, "/").concat(cities.length, " cities: ").concat(placedCities.join(', ')));
+    console.log(`✅ Successfully placed ${placedCities.length}/${cities.length} cities: ${placedCities.join(', ')}`);
     // Test the 2D projection by drawing cities on the projection map
     testProjectionMap();
 }
 // Test function to draw cities on the 2D projection map
 function testProjectionMap() {
-    var projectionCanvas = hexasphere.projectionCanvas;
+    const projectionCanvas = hexasphere.projectionCanvas;
     if (!projectionCanvas) {
         console.log("❌ No projection canvas available for testing");
         return;
     }
     // Make the projection map visible for testing
-    var projectionImg = document.getElementById('projection');
+    const projectionImg = document.getElementById('projection');
     if (projectionImg) {
         projectionImg.style.display = 'block';
         projectionImg.style.position = 'absolute';
@@ -424,7 +469,7 @@ function testProjectionMap() {
         projectionImg.style.zIndex = '1000';
     }
     // Create a test canvas to overlay on the projection map
-    var testCanvas = document.createElement('canvas');
+    const testCanvas = document.createElement('canvas');
     testCanvas.width = projectionCanvas.width;
     testCanvas.height = projectionCanvas.height;
     testCanvas.style.position = 'absolute';
@@ -435,9 +480,9 @@ function testProjectionMap() {
     testCanvas.style.pointerEvents = 'none';
     testCanvas.style.zIndex = '1001';
     testCanvas.style.border = '2px solid red';
-    var ctx = testCanvas.getContext('2d');
+    const ctx = testCanvas.getContext('2d');
     // Test cities
-    var testCities = [
+    const testCities = [
         { name: "New York", lat: 40.7128, lon: -74.0060, color: 'red' },
         { name: "London", lat: 51.5074, lon: -0.1278, color: 'blue' },
         { name: "Tokyo", lat: 35.6762, lon: 139.6503, color: 'yellow' },
@@ -445,21 +490,20 @@ function testProjectionMap() {
         { name: "São Paulo", lat: -23.5505, lon: -46.6333, color: 'orange' }
     ];
     console.log("🗺️ Testing 2D projection coordinates:");
-    for (var _i = 0, testCities_1 = testCities; _i < testCities_1.length; _i++) {
-        var city = testCities_1[_i];
+    for (const city of testCities) {
         // Convert to pixel coordinates using standard equirectangular projection
         // Apply the same scaling factor and offsets as the main function
-        var scaleFactor = 2.4; // Increase scale to spread cities more
-        var lonOffset = 250; // Shift longitude even more to the right
-        var latOffset = -120; // Shift latitude down even more
-        var scaledLon = city.lon * scaleFactor + lonOffset;
-        var scaledLat = city.lat * scaleFactor + latOffset;
-        var pixelX = Math.floor(projectionCanvas.width * (scaledLon + 180) / 360);
-        var pixelY = Math.floor(projectionCanvas.height * (90 - scaledLat) / 180);
+        const scaleFactor = 2.4; // Increase scale to spread cities more
+        const lonOffset = 250; // Shift longitude even more to the right
+        const latOffset = -120; // Shift latitude down even more
+        const scaledLon = city.lon * scaleFactor + lonOffset;
+        const scaledLat = city.lat * scaleFactor + latOffset;
+        const pixelX = Math.floor(projectionCanvas.width * (scaledLon + 180) / 360);
+        const pixelY = Math.floor(projectionCanvas.height * (90 - scaledLat) / 180);
         // Scale coordinates to fit the display size
-        var displayX = (pixelX / projectionCanvas.width) * 400;
-        var displayY = (pixelY / projectionCanvas.height) * 200;
-        console.log("\uD83D\uDCCD ".concat(city.name, ": lat=").concat(city.lat, "\u00B0, lon=").concat(city.lon, "\u00B0 -> pixel (").concat(pixelX, ", ").concat(pixelY, ") -> display (").concat(displayX.toFixed(1), ", ").concat(displayY.toFixed(1), ")"));
+        const displayX = (pixelX / projectionCanvas.width) * 400;
+        const displayY = (pixelY / projectionCanvas.height) * 200;
+        console.log(`📍 ${city.name}: lat=${city.lat}°, lon=${city.lon}° -> pixel (${pixelX}, ${pixelY}) -> display (${displayX.toFixed(1)}, ${displayY.toFixed(1)})`);
         // Draw a circle on the test canvas
         ctx.fillStyle = city.color;
         ctx.beginPath();
@@ -495,9 +539,9 @@ function latLonToCartesian(lat, lon, radius) {
     // This gives us: atan2(x, z) = theta - π/2
     // So: x = radius * sin(phi) * cos(theta - π/2)
     //     z = radius * sin(phi) * sin(theta - π/2)
-    var phi = (lat + 90) * Math.PI / 180; // Convert latitude to phi (0 at south pole, π at north pole)
-    var theta = lon * Math.PI / 180; // Convert longitude to theta (-π to π)
-    var adjustedTheta = theta - Math.PI / 2;
+    const phi = (lat + 90) * Math.PI / 180; // Convert latitude to phi (0 at south pole, π at north pole)
+    const theta = lon * Math.PI / 180; // Convert longitude to theta (-π to π)
+    const adjustedTheta = theta - Math.PI / 2;
     return {
         x: radius * Math.sin(phi) * Math.cos(adjustedTheta),
         y: radius * Math.cos(phi), // Y is up (north pole)
@@ -507,16 +551,16 @@ function latLonToCartesian(lat, lon, radius) {
 // Calculate spherical distance between two 3D points on a sphere
 function calculateSphericalDistance(point1, point2) {
     // Normalize vectors to unit sphere
-    var normalize = function (p) {
-        var length = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    const normalize = (p) => {
+        const length = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
         return { x: p.x / length, y: p.y / length, z: p.z / length };
     };
-    var p1 = normalize(point1);
-    var p2 = normalize(point2);
+    const p1 = normalize(point1);
+    const p2 = normalize(point2);
     // Calculate dot product
-    var dotProduct = p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
+    const dotProduct = p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
     // Clamp to avoid numerical errors
-    var clampedDot = Math.max(-1, Math.min(1, dotProduct));
+    const clampedDot = Math.max(-1, Math.min(1, dotProduct));
     // Calculate angle between vectors (spherical distance)
     return Math.acos(clampedDot);
 }
@@ -524,13 +568,13 @@ document.addEventListener('mousedown', onMouseDown);
 document.addEventListener('mouseup', onMouseUp);
 document.addEventListener('mousemove', onMouseMove);
 // Handle window resize
-window.addEventListener('resize', function () {
+window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 // Animation state
-var isAnimating = false;
+let isAnimating = false;
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
@@ -545,40 +589,40 @@ function animate() {
 // Add renderer to page
 document.body.appendChild(renderer.domElement);
 // Control event handlers
-var radiusSlider = document.getElementById('radiusSlider');
-var subdivisionsSlider = document.getElementById('subdivisionsSlider');
-var tileSizeSlider = document.getElementById('tileSizeSlider');
-var regenerateButton = document.getElementById('regenerateBtn');
-var animationToggleButton = document.getElementById('animationToggleBtn');
-var radiusValue = document.getElementById('radiusValue');
-var subdivisionsValue = document.getElementById('subdivisionsValue');
-var tileSizeValue = document.getElementById('tileSizeValue');
-var tileCount = document.getElementById('tileCount');
+const radiusSlider = document.getElementById('radiusSlider');
+const subdivisionsSlider = document.getElementById('subdivisionsSlider');
+const tileSizeSlider = document.getElementById('tileSizeSlider');
+const regenerateButton = document.getElementById('regenerateBtn');
+const animationToggleButton = document.getElementById('animationToggleBtn');
+const radiusValue = document.getElementById('radiusValue');
+const subdivisionsValue = document.getElementById('subdivisionsValue');
+const tileSizeValue = document.getElementById('tileSizeValue');
+const tileCount = document.getElementById('tileCount');
 // Update display values
-radiusSlider.addEventListener('input', function () {
+radiusSlider.addEventListener('input', () => {
     radiusValue.textContent = radiusSlider.value;
 });
-subdivisionsSlider.addEventListener('input', function () {
+subdivisionsSlider.addEventListener('input', () => {
     subdivisionsValue.textContent = subdivisionsSlider.value;
 });
-tileSizeSlider.addEventListener('input', function () {
+tileSizeSlider.addEventListener('input', () => {
     tileSizeValue.textContent = tileSizeSlider.value;
 });
 // Regenerate button
-regenerateButton.addEventListener('click', function () {
-    var radius = parseFloat(radiusSlider.value);
-    var subdivisions = parseInt(subdivisionsSlider.value);
-    var tileSize = parseFloat(tileSizeSlider.value);
+regenerateButton.addEventListener('click', () => {
+    const radius = parseFloat(radiusSlider.value);
+    const subdivisions = parseInt(subdivisionsSlider.value);
+    const tileSize = parseFloat(tileSizeSlider.value);
     regenerateButton.textContent = 'Generating...';
     regenerateButton.disabled = true;
     // Small delay to allow UI update
-    setTimeout(function () {
+    setTimeout(() => {
         hexasphere.regenerate(radius, subdivisions, tileSize);
         tileCount.textContent = hexasphere.getTiles().length.toString();
         regenerateButton.textContent = 'Regenerate Hexasphere';
         regenerateButton.disabled = false;
         // Re-add cities after regeneration
-        setTimeout(function () {
+        setTimeout(() => {
             addSampleCities();
             // Update tile visibility after regeneration
             hexasphere.updateTileVisibility(camera);
@@ -586,7 +630,7 @@ regenerateButton.addEventListener('click', function () {
     }, 100);
 });
 // Animation toggle button
-animationToggleButton.addEventListener('click', function () {
+animationToggleButton.addEventListener('click', () => {
     isAnimating = !isAnimating;
     if (isAnimating) {
         animationToggleButton.textContent = '⏸️ Pause Animation';
@@ -598,14 +642,14 @@ animationToggleButton.addEventListener('click', function () {
     }
 });
 // Zoom controls
-document.addEventListener('wheel', function (event) {
+document.addEventListener('wheel', (event) => {
     camera.position.z += event.deltaY * 0.1;
     camera.position.z = Math.max(20, Math.min(200, camera.position.z));
     // Update tile visibility when zooming
     hexasphere.updateTileVisibility(camera);
 });
 // Update tile count when hexasphere is ready
-setTimeout(function () {
+setTimeout(() => {
     tileCount.textContent = hexasphere.getTiles().length.toString();
 }, 1000);
 // Start animation

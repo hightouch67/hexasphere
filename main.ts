@@ -1,4 +1,6 @@
-import * as THREE from 'three';
+import type * as ThreeTypes from 'three';
+
+const THREE = (window as any).THREE;
 import { HexaSphere } from './src/hexasphere';
 
 // Initialize Three.js scene
@@ -130,12 +132,12 @@ function onTileClick(event: MouseEvent) {
             // If no instanced mesh present (fallback), use original behavior
             const tileMeshes = hexasphere.getTiles()
                 .map(tile => tile.mesh)
-                .filter(mesh => mesh !== undefined) as THREE.Mesh[];
+                .filter(mesh => mesh !== undefined) as ThreeTypes.Mesh[];
 
             const intersects = raycaster.intersectObjects(tileMeshes);
 
             if (intersects.length > 0) {
-                const clickedMesh = intersects[0].object as THREE.Mesh;
+                const clickedMesh = intersects[0].object as ThreeTypes.Mesh;
                 clickedTileIndex = hexasphere.getTiles().findIndex(tile => tile.mesh === clickedMesh);
             }
         }

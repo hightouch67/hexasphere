@@ -41,6 +41,8 @@ logTileCoordinates();
 // Add sample city labels after hexasphere is ready
 setTimeout(() => {
     addSampleCities();
+    // Update tile visibility initially
+    hexasphere.updateTileVisibility(camera);
 }, 1000);
 
 // Mouse controls and tile selection
@@ -80,6 +82,9 @@ function onMouseMove(event: MouseEvent) {
 
     scene.rotation.y += deltaX * 0.005;
     scene.rotation.x += deltaY * 0.005;
+
+    // Update tile visibility when rotating the view
+    hexasphere.updateTileVisibility(camera);
 
     mouseX = event.clientX;
     mouseY = event.clientY;
@@ -684,6 +689,9 @@ function animate() {
         scene.rotation.y += 0.002;
     }
     
+    // Update tile visibility based on camera position
+    hexasphere.updateTileVisibility(camera);
+    
     renderer.render(scene, camera);
 }
 
@@ -735,6 +743,8 @@ regenerateButton.addEventListener('click', () => {
         // Re-add cities after regeneration
         setTimeout(() => {
             addSampleCities();
+            // Update tile visibility after regeneration
+            hexasphere.updateTileVisibility(camera);
         }, 500);
     }, 100);
 });
@@ -756,6 +766,9 @@ animationToggleButton.addEventListener('click', () => {
 document.addEventListener('wheel', (event) => {
     camera.position.z += event.deltaY * 0.1;
     camera.position.z = Math.max(20, Math.min(200, camera.position.z));
+    
+    // Update tile visibility when zooming
+    hexasphere.updateTileVisibility(camera);
 });
 
 // Update tile count when hexasphere is ready

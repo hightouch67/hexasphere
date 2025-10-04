@@ -47,6 +47,7 @@ export declare class HexaSphere {
     clearPathLines(): void;
     clearTileLabels(): void;
     private tileInstancedMesh?;
+    private tileOriginalPositions;
     private instanceDummy;
     private createMeshes;
     private createPlanetMesh;
@@ -57,6 +58,8 @@ export declare class HexaSphere {
     animateAtmosphere(deltaTime: number): void;
     setTileColor(tileIndex: number, color: number): void;
     getTileInstancedMesh(): THREE.InstancedMesh | undefined;
+    updateTileVisibility(camera: THREE.Camera): void;
+    private calculateTileScale;
     regenerate(radius: number, numDivisions: number, hexSize: number): void;
 }
 

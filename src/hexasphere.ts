@@ -818,6 +818,7 @@ export class HexaSphere {
     }
 
     private tileInstancedMesh?: THREE.InstancedMesh;
+    private tileOriginalPositions: THREE.Vector3[] = []; // Store original positions for visibility toggling
     private instanceDummy = new THREE.Object3D();
 
     private createMeshes() {
@@ -877,6 +878,9 @@ export class HexaSphere {
         const count = this.tiles.length;
         const instanced = new THREE.InstancedMesh(baseGeometry, material, count);
         instanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+        // Initialize original positions array
+        this.tileOriginalPositions = new Array(count);
 
         // Per-instance color attribute support: prefer setColorAt if available,
         // otherwise create instanceColor attribute manually.
@@ -982,6 +986,9 @@ export class HexaSphere {
 
             dummy.updateMatrix();
             instanced.setMatrixAt(i, dummy.matrix);
+
+            // Store original position for visibility toggling
+            this.tileOriginalPositions[i] = posVec.clone();
 
             // Set instance color
             const color = new THREE.Color(detailed.color);
@@ -1150,6 +1157,87 @@ export class HexaSphere {
         return this.tileInstancedMesh;
     }
 
+    // Update tile visibility based on camera position - hide tiles on the back of the planet
+    updateTileVisibility(camera: THREE.Camera) {
+        if (!this.tileInstancedMesh || !this.tiles) return;
+
+        // Ensure scene matrix is up to date
+        this.scene.updateMatrixWorld();
+
+        const instanced = this.tileInstancedMesh;
+        
+        // Get camera position in world space
+        const cameraPosition = camera.position.clone();
+        
+        // Apply inverse of scene transformation to get camera position in sphere's local space
+        const inverseSceneMatrix = new THREE.Matrix4().copy(this.scene.matrixWorld).invert();
+        cameraPosition.applyMatrix4(inverseSceneMatrix);
+        
+        const sphereCenter = new THREE.Vector3(0, 0, 0); // Sphere is at origin in local space
+
+        // Get camera direction (normalized vector from camera to sphere center in local space)
+        const cameraToCenter = sphereCenter.clone().sub(cameraPosition).normalize();
+
+        for (let i = 0; i < this.tiles.length; i++) {
+            const tile = this.tiles[i];
+            const tilePos = new THREE.Vector3(tile.centerPoint.x, tile.centerPoint.y, tile.centerPoint.z);
+
+            // Vector from camera to tile in local space
+            const cameraToTile = tilePos.clone().sub(cameraPosition);
+
+            // Dot product: if positive, tile is on the front side of the sphere
+            const dotProduct = cameraToTile.dot(cameraToCenter);
+
+            // Get current matrix
+            const matrix = new THREE.Matrix4();
+            instanced.getMatrixAt(i, matrix);
+
+            // Extract current scale from matrix
+            const currentScale = new THREE.Vector3();
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            matrix.decompose(position, quaternion, currentScale);
+
+            // Calculate target position and scale
+            let targetPosition = this.tileOriginalPositions[i] ? this.tileOriginalPositions[i].clone() : position.clone();
+            let targetScale = currentScale.clone();
+            
+            if (dotProduct > 0) {
+                // Tile is on the front - show it at its original position
+                const originalScale = this.calculateTileScale(tile);
+                targetScale.set(originalScale, 1, originalScale);
+            } else {
+                // Tile is on the back - hide it by moving far away
+                targetPosition.set(10000, 10000, 10000); // Move far away
+                targetScale.set(0.01, 0.01, 0.01); // Small scale to avoid issues
+            }
+
+            // Only update if position or scale changed
+            if (!position.equals(targetPosition) || !currentScale.equals(targetScale)) {
+                // Update the matrix with new position and scale
+                const newMatrix = new THREE.Matrix4();
+                newMatrix.compose(targetPosition, quaternion, targetScale);
+                instanced.setMatrixAt(i, newMatrix);
+            }
+        }
+
+        instanced.instanceMatrix.needsUpdate = true;
+    }
+
+    // Helper method to calculate the original scale for a tile
+    private calculateTileScale(tile: Tile): number {
+        if (tile.boundary && tile.boundary.length > 0) {
+            const cp = tile.centerPoint;
+            const bp = tile.boundary[0];
+            const dx = bp.x - cp.x;
+            const dy = bp.y - cp.y;
+            const dz = bp.z - cp.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            return dist * 0.98;
+        }
+        return 1; // fallback
+    }
+
     // Clear existing tiles and regenerate
     regenerate(radius: number, numDivisions: number, hexSize: number) {
         // Clear existing meshes
@@ -1159,6 +1247,9 @@ export class HexaSphere {
             (this.tileInstancedMesh.material as THREE.Material).dispose();
             this.tileInstancedMesh = undefined;
         }
+
+        // Clear original positions
+        this.tileOriginalPositions = [];
 
         // Clear 3D elements
         this.clearPathLines();

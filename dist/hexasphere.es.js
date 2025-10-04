@@ -1,90 +1,90 @@
-import * as h from "three";
+import * as c from "three";
 class C {
-  constructor(t = 0, e = 0, n = 0) {
-    this.faces = [], this.x = parseFloat(t.toFixed(3)), this.y = parseFloat(e.toFixed(3)), this.z = parseFloat(n.toFixed(3));
+  constructor(e = 0, t = 0, s = 0) {
+    this.faces = [], this.x = parseFloat(e.toFixed(3)), this.y = parseFloat(t.toFixed(3)), this.z = parseFloat(s.toFixed(3));
   }
-  subdivide(t, e, n) {
+  subdivide(e, t, s) {
     const i = [];
     i.push(this);
-    for (let o = 1; o < e; o++) {
-      const s = new C(
-        this.x * (1 - o / e) + t.x * (o / e),
-        this.y * (1 - o / e) + t.y * (o / e),
-        this.z * (1 - o / e) + t.z * (o / e)
+    for (let o = 1; o < t; o++) {
+      const n = new C(
+        this.x * (1 - o / t) + e.x * (o / t),
+        this.y * (1 - o / t) + e.y * (o / t),
+        this.z * (1 - o / t) + e.z * (o / t)
       );
-      i.push(n(s));
+      i.push(s(n));
     }
-    return i.push(t), i;
+    return i.push(e), i;
   }
-  segment(t, e) {
-    e = Math.max(0.01, Math.min(1, e));
-    const n = t.x * (1 - e) + this.x * e, i = t.y * (1 - e) + this.y * e, o = t.z * (1 - e) + this.z * e;
-    return new C(n, i, o);
+  segment(e, t) {
+    t = Math.max(0.01, Math.min(1, t));
+    const s = e.x * (1 - t) + this.x * t, i = e.y * (1 - t) + this.y * t, o = e.z * (1 - t) + this.z * t;
+    return new C(s, i, o);
   }
-  project(t) {
-    const e = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2)), n = t / e;
-    return this.x = this.x * n, this.y = this.y * n, this.z = this.z * n, this;
+  project(e) {
+    const t = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2)), s = e / t;
+    return this.x = this.x * s, this.y = this.y * s, this.z = this.z * s, this;
   }
-  registerFace(t) {
-    this.faces.find((e) => e.id === t.id) || this.faces.push(t);
+  registerFace(e) {
+    this.faces.find((t) => t.id === e.id) || this.faces.push(e);
   }
   getOrderedFaces() {
-    const t = this.faces.slice(), e = [];
-    let n = 0;
-    for (; n < this.faces.length && t.length > 0; ) {
-      if (n === 0)
-        e.push(t[0]), t.splice(0, 1);
+    const e = this.faces.slice(), t = [];
+    let s = 0;
+    for (; s < this.faces.length && e.length > 0; ) {
+      if (s === 0)
+        t.push(e[0]), e.splice(0, 1);
       else {
         let i = !1;
-        for (let o = 0; o < t.length; o++)
-          if (t[o].isAdjacentTo(e[n - 1])) {
-            e.push(t[o]), t.splice(o, 1), i = !0;
+        for (let o = 0; o < e.length; o++)
+          if (e[o].isAdjacentTo(t[s - 1])) {
+            t.push(e[o]), e.splice(o, 1), i = !0;
             break;
           }
         if (!i) break;
       }
-      n++;
+      s++;
     }
-    return e;
+    return t;
   }
   toString() {
     return `${this.x},${this.y},${this.z}`;
   }
 }
-const L = class L {
-  constructor(t, e, n, i = !0) {
-    this.id = L.idCounter++, this.points = [t, e, n], i && (t.registerFace(this), e.registerFace(this), n.registerFace(this));
+const j = class j {
+  constructor(e, t, s, i = !0) {
+    this.id = j.idCounter++, this.points = [e, t, s], i && (e.registerFace(this), t.registerFace(this), s.registerFace(this));
   }
-  getOtherPoints(t) {
-    return this.points.filter((e) => e.toString() !== t.toString());
+  getOtherPoints(e) {
+    return this.points.filter((t) => t.toString() !== e.toString());
   }
-  isAdjacentTo(t) {
-    if (!(t != null && t.points)) return !1;
-    let e = 0;
-    for (const n of this.points)
-      for (const i of t.points)
-        n.toString() === i.toString() && e++;
-    return e === 2;
+  isAdjacentTo(e) {
+    if (!(e != null && e.points)) return !1;
+    let t = 0;
+    for (const s of this.points)
+      for (const i of e.points)
+        s.toString() === i.toString() && t++;
+    return t === 2;
   }
   getCentroid() {
     if (this.centroid) return this.centroid;
-    const t = (this.points[0].x + this.points[1].x + this.points[2].x) / 3, e = (this.points[0].y + this.points[1].y + this.points[2].y) / 3, n = (this.points[0].z + this.points[1].z + this.points[2].z) / 3;
-    return this.centroid = new C(t, e, n), this.centroid;
+    const e = (this.points[0].x + this.points[1].x + this.points[2].x) / 3, t = (this.points[0].y + this.points[1].y + this.points[2].y) / 3, s = (this.points[0].z + this.points[1].z + this.points[2].z) / 3;
+    return this.centroid = new C(e, t, s), this.centroid;
   }
 };
-L.idCounter = 0;
-let w = L;
-class U {
-  constructor(t, e = 1) {
-    this.neighbors = [], e = Math.max(0.01, Math.min(1, e)), this.centerPoint = t, this.faces = t.getOrderedFaces(), this.boundary = [], this.neighborIds = [];
-    const n = {};
+j.idCounter = 0;
+let w = j;
+class B {
+  constructor(e, t = 1) {
+    this.neighbors = [], t = Math.max(0.01, Math.min(1, t)), this.centerPoint = e, this.faces = e.getOrderedFaces(), this.boundary = [], this.neighborIds = [];
+    const s = {};
     for (let i = 0; i < this.faces.length; i++) {
-      this.boundary.push(this.faces[i].getCentroid().segment(this.centerPoint, e));
+      this.boundary.push(this.faces[i].getCentroid().segment(this.centerPoint, t));
       const o = this.faces[i].getOtherPoints(this.centerPoint);
-      for (let s = 0; s < Math.min(2, o.length); s++)
-        n[o[s].toString()] = 1;
+      for (let n = 0; n < Math.min(2, o.length); n++)
+        s[o[n].toString()] = 1;
     }
-    if (this.neighborIds = Object.keys(n), this.boundary.length >= 4) {
+    if (this.neighborIds = Object.keys(s), this.boundary.length >= 4) {
       const i = {
         x: this.boundary[2].x - this.boundary[1].x,
         y: this.boundary[2].y - this.boundary[1].y,
@@ -93,48 +93,48 @@ class U {
         x: this.boundary[3].x - this.boundary[1].x,
         y: this.boundary[3].y - this.boundary[1].y,
         z: this.boundary[3].z - this.boundary[1].z
-      }, s = {
+      }, n = {
         x: i.y * o.z - i.z * o.y,
         y: i.z * o.x - i.x * o.z,
         z: i.x * o.y - i.y * o.x
       };
-      this.centerPoint.x * s.x + this.centerPoint.y * s.y + this.centerPoint.z * s.z < 0 && this.boundary.reverse();
+      this.centerPoint.x * n.x + this.centerPoint.y * n.y + this.centerPoint.z * n.z < 0 && this.boundary.reverse();
     }
   }
-  getLatLon(t) {
-    const e = Math.acos(this.centerPoint.y / t), n = (Math.atan2(this.centerPoint.x, this.centerPoint.z) + Math.PI + Math.PI / 2) % (Math.PI * 2) - Math.PI;
+  getLatLon(e) {
+    const t = Math.acos(this.centerPoint.y / e), s = (Math.atan2(this.centerPoint.x, this.centerPoint.z) + Math.PI + Math.PI / 2) % (Math.PI * 2) - Math.PI;
     return {
-      lat: 180 * e / Math.PI - 90,
-      lon: 180 * n / Math.PI
+      lat: 180 * t / Math.PI - 90,
+      lon: 180 * s / Math.PI
     };
   }
   toString() {
     return this.centerPoint.toString();
   }
 }
-class k {
-  constructor(t, e, n, i, o) {
-    this.tiles = [], this.tileLookup = {}, this.pathLines = [], this.tileLabels = [], this.instanceDummy = new h.Object3D(), this.radius = t, this.scene = i, this.viewMode = o, this.loadProjectionMap().then(() => {
-      this.generateHexasphere(t, e, n, this.viewMode);
+class H {
+  constructor(e, t, s, i, o) {
+    this.tiles = [], this.tileLookup = {}, this.pathLines = [], this.tileLabels = [], this.tileOriginalPositions = [], this.instanceDummy = new c.Object3D(), this.radius = e, this.scene = i, this.viewMode = o, this.loadProjectionMap().then(() => {
+      this.generateHexasphere(e, t, s, this.viewMode);
     });
   }
   async loadProjectionMap() {
-    return new Promise((t) => {
-      const e = document.getElementById("projection");
-      if (!e) {
-        t();
+    return new Promise((e) => {
+      const t = document.getElementById("projection");
+      if (!t) {
+        e();
         return;
       }
-      const n = () => {
+      const s = () => {
         this.projectionCanvas = document.createElement("canvas");
         const i = this.projectionCanvas.getContext("2d");
-        this.projectionCanvas.width = e.naturalWidth || e.width, this.projectionCanvas.height = e.naturalHeight || e.height, i.drawImage(e, 0, 0), this.projectionData = i.getImageData(0, 0, this.projectionCanvas.width, this.projectionCanvas.height);
+        this.projectionCanvas.width = t.naturalWidth || t.width, this.projectionCanvas.height = t.naturalHeight || t.height, i.drawImage(t, 0, 0), this.projectionData = i.getImageData(0, 0, this.projectionCanvas.width, this.projectionCanvas.height);
       };
-      e.complete && e.naturalWidth > 0 ? n() : e.onload = n, t();
+      t.complete && t.naturalWidth > 0 ? s() : t.onload = s, e();
     });
   }
-  generateHexasphere(t, e, n, i) {
-    const o = 1.61803399, s = [
+  generateHexasphere(e, t, s, i) {
+    const o = 1.61803399, n = [
       new C(1e3, o * 1e3, 0),
       new C(-1e3, o * 1e3, 0),
       new C(1e3, -o * 1e3, 0),
@@ -147,346 +147,353 @@ class k {
       new C(-o * 1e3, 0, 1e3),
       new C(o * 1e3, 0, -1e3),
       new C(-o * 1e3, 0, -1e3)
-    ], c = {};
-    for (const r of s)
-      c[r.toString()] = r;
+    ], h = {};
+    for (const r of n)
+      h[r.toString()] = r;
     const a = [
-      new w(s[0], s[1], s[4], !1),
-      new w(s[1], s[9], s[4], !1),
-      new w(s[4], s[9], s[5], !1),
-      new w(s[5], s[9], s[3], !1),
-      new w(s[2], s[3], s[7], !1),
-      new w(s[3], s[2], s[5], !1),
-      new w(s[7], s[10], s[2], !1),
-      new w(s[0], s[8], s[10], !1),
-      new w(s[0], s[4], s[8], !1),
-      new w(s[8], s[2], s[10], !1),
-      new w(s[8], s[4], s[5], !1),
-      new w(s[8], s[5], s[2], !1),
-      new w(s[1], s[0], s[6], !1),
-      new w(s[11], s[1], s[6], !1),
-      new w(s[3], s[9], s[11], !1),
-      new w(s[6], s[10], s[7], !1),
-      new w(s[3], s[11], s[7], !1),
-      new w(s[11], s[6], s[7], !1),
-      new w(s[6], s[0], s[10], !1),
-      new w(s[9], s[1], s[11], !1)
-    ], p = (r) => {
-      const d = r.toString();
-      return c[d] ? c[d] : (c[d] = r, r);
+      new w(n[0], n[1], n[4], !1),
+      new w(n[1], n[9], n[4], !1),
+      new w(n[4], n[9], n[5], !1),
+      new w(n[5], n[9], n[3], !1),
+      new w(n[2], n[3], n[7], !1),
+      new w(n[3], n[2], n[5], !1),
+      new w(n[7], n[10], n[2], !1),
+      new w(n[0], n[8], n[10], !1),
+      new w(n[0], n[4], n[8], !1),
+      new w(n[8], n[2], n[10], !1),
+      new w(n[8], n[4], n[5], !1),
+      new w(n[8], n[5], n[2], !1),
+      new w(n[1], n[0], n[6], !1),
+      new w(n[11], n[1], n[6], !1),
+      new w(n[3], n[9], n[11], !1),
+      new w(n[6], n[10], n[7], !1),
+      new w(n[3], n[11], n[7], !1),
+      new w(n[11], n[6], n[7], !1),
+      new w(n[6], n[0], n[10], !1),
+      new w(n[9], n[1], n[11], !1)
+    ], d = (r) => {
+      const p = r.toString();
+      return h[p] ? h[p] : (h[p] = r, r);
     };
-    let m = [];
+    let M = [];
     for (let r = 0; r < a.length; r++) {
-      let d = [];
-      const M = [a[r].points[0]], l = a[r].points[0].subdivide(a[r].points[1], e, p), y = a[r].points[0].subdivide(a[r].points[2], e, p);
-      for (let f = 1; f <= e; f++) {
-        d = M.slice(), M.length = 0, M.push(...l[f].subdivide(y[f], f, p));
-        for (let u = 0; u < f; u++)
-          m.push(new w(d[u], M[u], M[u + 1])), u > 0 && m.push(new w(d[u - 1], d[u], M[u]));
+      let p = [];
+      const y = [a[r].points[0]], l = a[r].points[0].subdivide(a[r].points[1], t, d), f = a[r].points[0].subdivide(a[r].points[2], t, d);
+      for (let u = 1; u <= t; u++) {
+        p = y.slice(), y.length = 0, y.push(...l[u].subdivide(f[u], u, d));
+        for (let m = 0; m < u; m++)
+          M.push(new w(p[m], y[m], y[m + 1])), m > 0 && M.push(new w(p[m - 1], p[m], y[m]));
       }
     }
     const g = {};
-    for (const r in c) {
-      const d = c[r].project(t);
-      g[d.toString()] = d;
+    for (const r in h) {
+      const p = h[r].project(e);
+      g[p.toString()] = p;
     }
     this.tiles = [], this.tileLookup = {};
     for (const r in g) {
-      const d = new U(g[r], n);
-      this.tiles.push(d), this.tileLookup[g[r].toString()] = d;
+      const p = new B(g[r], s);
+      this.tiles.push(p), this.tileLookup[g[r].toString()] = p;
     }
     for (const r of this.tiles)
-      for (const d of r.neighborIds) {
-        const M = this.tileLookup[d];
-        M && M !== r && r.neighbors.push(M);
+      for (const p of r.neighborIds) {
+        const y = this.tileLookup[p];
+        y && y !== r && r.neighbors.push(y);
       }
     console.log(`🔗 Neighbor resolution complete. Tiles: ${this.tiles.length}`);
-    const b = this.tiles.filter((r) => r.neighbors.length > 0).length;
-    if (console.log(`🔗 Tiles with neighbors: ${b}/${this.tiles.length}`), this.tiles.length > 0) {
-      const r = this.tiles.reduce((d, M) => d + M.neighbors.length, 0) / this.tiles.length;
+    const x = this.tiles.filter((r) => r.neighbors.length > 0).length;
+    if (console.log(`🔗 Tiles with neighbors: ${x}/${this.tiles.length}`), this.tiles.length > 0) {
+      const r = this.tiles.reduce((p, y) => p + y.neighbors.length, 0) / this.tiles.length;
       console.log(`🔗 Average neighbors per tile: ${r.toFixed(1)}`);
     }
     console.log(this.viewMode), (this.viewMode === "tile" || this.viewMode === "both") && this.createMeshes(), (this.viewMode === "planet" || this.viewMode === "both") && (console.log("🌍 Creating planet and atmosphere meshes..."), this.createPlanetMesh(), this.createAtmosphereMesh());
   }
-  isLand(t, e) {
+  isLand(e, t) {
     if (!this.projectionData || !this.projectionCanvas)
       return Math.random() > 0.3;
-    const n = Math.floor(this.projectionCanvas.width * (e + 180) / 360), i = Math.floor(this.projectionCanvas.height * (t + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, n)), c = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4;
-    return this.projectionData.data[c] === 0;
+    const s = Math.floor(this.projectionCanvas.width * (t + 180) / 360), i = Math.floor(this.projectionCanvas.height * (e + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, s)), h = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4;
+    return this.projectionData.data[h] === 0;
   }
   // Public method for tile clicking functionality
-  isLandPublic(t, e) {
-    return this.isLand(t, e);
+  isLandPublic(e, t) {
+    return this.isLand(e, t);
   }
   // Helper method to get basic terrain type from coordinates
-  getBasicTerrainType(t, e) {
+  getBasicTerrainType(e, t) {
     if (!this.projectionData || !this.projectionCanvas)
       return "ocean";
-    const n = Math.floor(this.projectionCanvas.width * (e + 180) / 360), i = Math.floor(this.projectionCanvas.height * (t + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, n)), c = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4, a = this.projectionData.data[c], p = this.projectionData.data[c + 2];
+    const s = Math.floor(this.projectionCanvas.width * (t + 180) / 360), i = Math.floor(this.projectionCanvas.height * (e + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, s)), h = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4, a = this.projectionData.data[h], d = this.projectionData.data[h + 2];
     if (!(a === 0)) return "ocean";
-    const g = p;
+    const g = d;
     return g === 255 ? "arctic" : g === 50 ? "desert" : g === 100 ? "mountain" : g === 180 ? "forest" : g === 200 ? "city" : "forest";
   }
   // Calculate mountain density in surrounding area
-  getMountainDensity(t, e, n = 5) {
+  getMountainDensity(e, t, s = 5) {
     let i = 0, o = 0;
-    for (let s = -n; s <= n; s += 2)
-      for (let c = -n; c <= n; c += 2) {
-        const a = t + s, p = e + c;
-        a >= -90 && a <= 90 && p >= -180 && p <= 180 && (this.getBasicTerrainType(a, p) === "mountain" && i++, o++);
+    for (let n = -s; n <= s; n += 2)
+      for (let h = -s; h <= s; h += 2) {
+        const a = e + n, d = t + h;
+        a >= -90 && a <= 90 && d >= -180 && d <= 180 && (this.getBasicTerrainType(a, d) === "mountain" && i++, o++);
       }
     return o > 0 ? i / o : 0;
   }
   // Public method to get terrain information
-  getTerrainInfo(t, e) {
+  getTerrainInfo(e, t) {
     if (!this.projectionData || !this.projectionCanvas)
       return { type: "ocean", elevation: 0, temperature: 15, color: 992066 };
-    const n = Math.floor(this.projectionCanvas.width * (e + 180) / 360), i = Math.floor(this.projectionCanvas.height * (t + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, n)), c = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4, a = this.projectionData.data[c], p = this.projectionData.data[c + 1], m = this.projectionData.data[c + 2];
+    const s = Math.floor(this.projectionCanvas.width * (t + 180) / 360), i = Math.floor(this.projectionCanvas.height * (e + 90) / 180), o = Math.max(0, Math.min(this.projectionCanvas.width - 1, s)), h = (Math.max(0, Math.min(this.projectionCanvas.height - 1, i)) * this.projectionCanvas.width + o) * 4, a = this.projectionData.data[h], d = this.projectionData.data[h + 1], M = this.projectionData.data[h + 2];
     if (!(a === 0)) {
-      const l = Math.min(255 - m, 200), y = [992066, 1981066, 2450411, 3900150];
+      const l = Math.min(255 - M, 200), f = [992066, 1981066, 2450411, 3900150];
       return {
         type: "ocean",
         elevation: -l,
-        temperature: Math.max(0, 25 - Math.abs(t) * 0.3),
-        color: y[Math.min(3, Math.floor(l / 50))]
+        temperature: Math.max(0, 25 - Math.abs(e) * 0.3),
+        color: f[Math.min(3, Math.floor(l / 50))]
       };
     }
-    const r = 35 - Math.abs(t) * 0.7, d = p, M = m;
-    if (M === 255)
+    const r = 35 - Math.abs(e) * 0.7, p = d, y = M;
+    if (y === 255)
       return {
         type: "arctic",
-        elevation: d,
+        elevation: p,
         temperature: Math.min(r, -5),
         color: 16317180
       };
-    if (M === 240)
+    if (y === 240)
       return {
         type: "arctic",
-        elevation: d,
+        elevation: p,
         temperature: Math.min(r, 0),
         color: 14412542
       };
-    if (M === 50) {
+    if (y === 50) {
       const l = [16498468, 16096779, 14251782, 11817737];
       return {
         type: "desert",
-        elevation: d,
+        elevation: p,
         temperature: Math.max(r, 25),
-        color: l[Math.min(3, Math.floor(d / 64))]
+        color: l[Math.min(3, Math.floor(p / 64))]
       };
-    } else if (M === 100) {
-      const l = [7893356, 5722958, 4472892, 2696484], y = this.getMountainDensity(t, e, 3), f = d, u = 0.3 + y * 0.7, v = f * u, P = 0.9 + Math.random() * 0.2, x = Math.floor(v * P);
-      return Math.random() < 5e-3 && console.log(`Mountain at lat:${t.toFixed(1)}, lon:${e.toFixed(1)} - density:${y.toFixed(2)}, base:${f}, final:${x}`), {
+    } else if (y === 100) {
+      const l = [7893356, 5722958, 4472892, 2696484], f = this.getMountainDensity(e, t, 3), u = p, m = 0.3 + f * 0.7, v = u * m, P = 0.9 + Math.random() * 0.2, b = Math.floor(v * P);
+      return Math.random() < 5e-3 && console.log(`Mountain at lat:${e.toFixed(1)}, lon:${t.toFixed(1)} - density:${f.toFixed(2)}, base:${u}, final:${b}`), {
         type: "mountain",
-        elevation: x,
-        temperature: r - x * 0.1,
-        color: l[Math.min(3, Math.floor(x / 64))]
+        elevation: b,
+        temperature: r - b * 0.1,
+        color: l[Math.min(3, Math.floor(b / 64))]
       };
-    } else return M === 180 ? {
+    } else return y === 180 ? {
       type: "forest",
-      elevation: d,
+      elevation: p,
       temperature: r,
-      color: [1467700, 1409085, 1483594, 2278750][Math.min(3, Math.floor(d / 64))]
-    } : M === 200 ? {
+      color: [1467700, 1409085, 1483594, 2278750][Math.min(3, Math.floor(p / 64))]
+    } : y === 200 ? {
       type: "city",
       // Using city type for alien terrain
-      elevation: d,
+      elevation: p,
       temperature: r + 5,
       color: 16711935
     } : {
       type: "forest",
-      elevation: d,
+      elevation: p,
       temperature: r,
-      color: [8190976, 3767554, 7859712, 6402857, 8647980][Math.min(4, Math.floor(d / 51))]
+      color: [8190976, 3767554, 7859712, 6402857, 8647980][Math.min(4, Math.floor(p / 51))]
     };
   }
   // A* pathfinding between two tiles
-  findPath(t, e) {
-    const n = [t], i = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Map();
+  findPath(e, t) {
+    const s = [e], i = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Map(), n = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map();
     for (const a of this.tiles)
-      s.set(a, 1 / 0), c.set(a, 1 / 0);
-    for (s.set(t, 0), c.set(t, this.heuristic(t, e)); n.length > 0; ) {
-      let a = n[0];
-      for (const p of n)
-        c.get(p) < c.get(a) && (a = p);
-      if (a === e) {
-        const p = [];
-        let m = a;
-        for (; m; )
-          p.unshift(m), m = o.get(m);
-        return p;
+      n.set(a, 1 / 0), h.set(a, 1 / 0);
+    for (n.set(e, 0), h.set(e, this.heuristic(e, t)); s.length > 0; ) {
+      let a = s[0];
+      for (const d of s)
+        h.get(d) < h.get(a) && (a = d);
+      if (a === t) {
+        const d = [];
+        let M = a;
+        for (; M; )
+          d.unshift(M), M = o.get(M);
+        return d;
       }
-      n.splice(n.indexOf(a), 1), i.add(a);
-      for (const p of a.neighbors) {
-        if (i.has(p)) continue;
-        const m = s.get(a) + 1;
-        if (!n.includes(p))
-          n.push(p);
-        else if (m >= s.get(p))
+      s.splice(s.indexOf(a), 1), i.add(a);
+      for (const d of a.neighbors) {
+        if (i.has(d)) continue;
+        const M = n.get(a) + 1;
+        if (!s.includes(d))
+          s.push(d);
+        else if (M >= n.get(d))
           continue;
-        o.set(p, a), s.set(p, m), c.set(p, m + this.heuristic(p, e));
+        o.set(d, a), n.set(d, M), h.set(d, M + this.heuristic(d, t));
       }
     }
     return [];
   }
   // Heuristic function for A* (Euclidean distance between tile centers)
-  heuristic(t, e) {
-    const n = t.centerPoint.x - e.centerPoint.x, i = t.centerPoint.y - e.centerPoint.y, o = t.centerPoint.z - e.centerPoint.z;
-    return Math.sqrt(n * n + i * i + o * o);
+  heuristic(e, t) {
+    const s = e.centerPoint.x - t.centerPoint.x, i = e.centerPoint.y - t.centerPoint.y, o = e.centerPoint.z - t.centerPoint.z;
+    return Math.sqrt(s * s + i * i + o * o);
   }
   // Add a 3D text label above a tile
-  addTileLabel(t, e, n = 16777215, i = 5) {
-    if (!this.tiles[t]) return new h.Object3D();
+  addTileLabel(e, t, s = 16777215, i = 5) {
+    if (!this.tiles[e]) return new c.Object3D();
     this.tileLabelCounts || (this.tileLabelCounts = /* @__PURE__ */ new Map());
-    const s = this.tileLabelCounts.get(t) || 0;
-    this.tileLabelCounts.set(t, s + 1);
-    const c = document.createElement("canvas"), a = c.getContext("2d");
-    c.width = 256, c.height = 64, a.fillStyle = `#${n.toString(16).padStart(6, "0")}`, a.font = "Bold 24px Arial", a.textAlign = "center", a.fillText(e, 128, 40);
-    const p = new h.CanvasTexture(c), m = new h.SpriteMaterial({ map: p }), g = new h.Sprite(m), b = s * 2, r = this.getTilePosition(t, i + b);
+    const n = this.tileLabelCounts.get(e) || 0;
+    this.tileLabelCounts.set(e, n + 1);
+    const h = document.createElement("canvas"), a = h.getContext("2d");
+    h.width = 256, h.height = 64, a.fillStyle = `#${s.toString(16).padStart(6, "0")}`, a.font = "Bold 24px Arial", a.textAlign = "center", a.fillText(t, 128, 40);
+    const d = new c.CanvasTexture(h), M = new c.SpriteMaterial({ map: d }), g = new c.Sprite(M), x = n * 2, r = this.getTilePosition(e, i + x);
     g.position.copy(r), g.scale.set(8, 2, 1);
-    const d = new h.BufferGeometry(), M = this.getTilePosition(t, 0.5);
-    d.setFromPoints([M, r]);
-    const l = new h.LineBasicMaterial({
-      color: n,
+    const p = new c.BufferGeometry(), y = this.getTilePosition(e, 0.5);
+    p.setFromPoints([y, r]);
+    const l = new c.LineBasicMaterial({
+      color: s,
       transparent: !0,
       opacity: 0.7
-    }), y = new h.Line(d, l), f = new h.Group();
-    return f.add(g), f.add(y), this.scene.add(f), this.tileLabels.push(f), f;
+    }), f = new c.Line(p, l), u = new c.Group();
+    return u.add(g), u.add(f), this.scene.add(u), this.tileLabels.push(u), u;
   }
   // Get 3D position above a tile
-  getTilePosition(t, e) {
-    const n = this.tiles[t];
-    if (!n) return new h.Vector3();
-    const i = n.centerPoint, o = Math.sqrt(i.x * i.x + i.y * i.y + i.z * i.z);
-    return new h.Vector3(i.x / o, i.y / o, i.z / o).multiplyScalar(this.radius + e);
+  getTilePosition(e, t) {
+    const s = this.tiles[e];
+    if (!s) return new c.Vector3();
+    const i = s.centerPoint, o = Math.sqrt(i.x * i.x + i.y * i.y + i.z * i.z);
+    return new c.Vector3(i.x / o, i.y / o, i.z / o).multiplyScalar(this.radius + t);
   }
   // Create curved line between two tiles following sphere surface with elevated arc
-  createCurvedLine(t, e, n = 65535, i = 20) {
-    const o = this.tiles[t], s = this.tiles[e];
-    if (!o || !s)
-      return new h.Mesh();
-    const c = this.getTilePosition(t, 0.5), a = this.getTilePosition(e, 0.5), p = c.distanceTo(a), m = Math.min(p * 0.3, this.radius * 0.25), g = [];
+  createCurvedLine(e, t, s = 65535, i = 20) {
+    const o = this.tiles[e], n = this.tiles[t];
+    if (!o || !n)
+      return new c.Mesh();
+    const h = this.getTilePosition(e, 0.5), a = this.getTilePosition(t, 0.5), d = h.distanceTo(a), M = Math.min(d * 0.3, this.radius * 0.25), g = [];
     for (let l = 0; l <= i; l++) {
-      const y = l / i, f = c.clone().normalize().dot(a.clone().normalize()), u = Math.acos(Math.max(-1, Math.min(1, f)));
+      const f = l / i, u = h.clone().normalize().dot(a.clone().normalize()), m = Math.acos(Math.max(-1, Math.min(1, u)));
       let v;
-      if (u < 1e-3)
-        v = c.clone().lerp(a, y);
+      if (m < 1e-3)
+        v = h.clone().lerp(a, f);
       else {
-        const S = Math.sin(u), z = Math.sin((1 - y) * u) / S, T = Math.sin(y * u) / S;
-        v = c.clone().multiplyScalar(z).add(a.clone().multiplyScalar(T)), v.normalize();
+        const S = Math.sin(m), L = Math.sin((1 - f) * m) / S, T = Math.sin(f * m) / S;
+        v = h.clone().multiplyScalar(L).add(a.clone().multiplyScalar(T)), v.normalize();
       }
-      const P = 1 - Math.pow(2 * y - 1, 2), x = 0.5 + m * P;
-      v.multiplyScalar(this.radius + x), g.push(v);
+      const P = 1 - Math.pow(2 * f - 1, 2), b = 0.5 + M * P;
+      v.multiplyScalar(this.radius + b), g.push(v);
     }
-    const b = new h.CatmullRomCurve3(g), r = new h.TubeGeometry(b, i, 0.08, 6, !1), d = new h.MeshBasicMaterial({
-      color: n,
+    const x = new c.CatmullRomCurve3(g), r = new c.TubeGeometry(x, i, 0.08, 6, !1), p = new c.MeshBasicMaterial({
+      color: s,
       transparent: !0,
       opacity: 0.9
-    }), M = new h.Mesh(r, d);
-    return this.scene.add(M), this.pathLines.push(M), M;
+    }), y = new c.Mesh(r, p);
+    return this.scene.add(y), this.pathLines.push(y), y;
   }
   // Clear all path lines
   clearPathLines() {
-    for (const t of this.pathLines)
-      this.scene.remove(t), t.geometry.dispose(), t.material.dispose();
+    for (const e of this.pathLines)
+      this.scene.remove(e), e.geometry.dispose(), e.material.dispose();
     this.pathLines = [];
   }
   // Clear all tile labels
   clearTileLabels() {
-    for (const t of this.tileLabels)
-      this.scene.remove(t), t.traverse((e) => {
-        e instanceof h.Mesh || e instanceof h.Line ? (e.geometry.dispose(), Array.isArray(e.material) ? e.material.forEach((n) => n.dispose()) : e.material.dispose()) : e instanceof h.Sprite && e.material.dispose();
+    for (const e of this.tileLabels)
+      this.scene.remove(e), e.traverse((t) => {
+        t instanceof c.Mesh || t instanceof c.Line ? (t.geometry.dispose(), Array.isArray(t.material) ? t.material.forEach((s) => s.dispose()) : t.material.dispose()) : t instanceof c.Sprite && t.material.dispose();
       });
     this.tileLabels = [], this.tileLabelCounts = /* @__PURE__ */ new Map();
   }
   createMeshes() {
     if (this.tileInstancedMesh && (this.scene.remove(this.tileInstancedMesh), this.tileInstancedMesh.geometry.dispose(), this.tileInstancedMesh.material.dispose(), this.tileInstancedMesh = void 0), !this.tiles || this.tiles.length === 0) return;
-    const t = 6, e = 1, n = [], i = [];
-    n.push(0, 0, 0);
-    for (let l = 0; l < t; l++) {
-      const y = l / t * Math.PI * 2, f = Math.cos(y) * e, u = Math.sin(y) * e;
-      n.push(f, 0, u);
+    const e = 6, t = 1, s = [], i = [];
+    s.push(0, 0, 0);
+    for (let l = 0; l < e; l++) {
+      const f = l / e * Math.PI * 2, u = Math.cos(f) * t, m = Math.sin(f) * t;
+      s.push(u, 0, m);
     }
-    for (let l = 1; l <= t; l++) {
-      const f = l, u = l === t ? 1 : l + 1;
-      i.push(0, f, u);
+    for (let l = 1; l <= e; l++) {
+      const u = l === e ? 1 : l + 1, m = l;
+      i.push(0, u, m);
     }
-    const o = new h.BufferGeometry();
-    o.setAttribute("position", new h.Float32BufferAttribute(n, 3)), o.setIndex(i), o.computeVertexNormals();
-    const s = new h.MeshStandardMaterial({
+    const o = new c.BufferGeometry();
+    o.setAttribute("position", new c.Float32BufferAttribute(s, 3)), o.setIndex(i), o.computeVertexNormals();
+    const n = new c.MeshStandardMaterial({
       // We'll tint instance colors, so keep map optional
       // If you want the marble texture applied, you'd need a single texture and proper UVs.
       metalness: 0.1,
       roughness: 0.8,
       flatShading: !1
-    }), c = this.tiles.length, a = new h.InstancedMesh(o, s, c);
-    a.instanceMatrix.setUsage(h.DynamicDrawUsage);
-    const p = typeof a.setColorAt == "function";
-    if (!p) {
-      const l = new Float32Array(c * 3);
-      a.instanceColor = new h.InstancedBufferAttribute(l, 3), a.instanceColor.setUsage(h.DynamicDrawUsage);
+      // side: THREE.DoubleSide, // Remove double side to allow culling
+    }), h = this.tiles.length, a = new c.InstancedMesh(o, n, h);
+    a.instanceMatrix.setUsage(c.DynamicDrawUsage), this.tileOriginalPositions = new Array(h);
+    const d = typeof a.setColorAt == "function";
+    if (!d) {
+      const l = new Float32Array(h * 3);
+      a.instanceColor = new c.InstancedBufferAttribute(l, 3), a.instanceColor.setUsage(c.DynamicDrawUsage);
     }
-    const m = new h.Vector3(0, 1, 0), g = this.instanceDummy, b = new h.Quaternion(), r = new h.Vector3();
-    let d = 1;
+    const M = new c.Vector3(0, 1, 0), g = this.instanceDummy, x = new c.Quaternion(), r = new c.Vector3();
+    let p = 1;
     for (let l = 0; l < this.tiles.length; l++) {
-      const y = this.tiles[l].boundary;
-      if (y && y.length > 0) {
-        const f = this.tiles[l].centerPoint, u = y[0], v = u.x - f.x, P = u.y - f.y, x = u.z - f.z;
-        d = Math.sqrt(v * v + P * P + x * x);
+      const f = this.tiles[l].boundary;
+      if (f && f.length > 0) {
+        const u = this.tiles[l].centerPoint, m = f[0], v = m.x - u.x, P = m.y - u.y, b = m.z - u.z;
+        p = Math.sqrt(v * v + P * P + b * b);
         break;
       }
     }
-    const M = d || 1;
+    const y = p || 1;
     for (let l = 0; l < this.tiles.length; l++) {
-      const y = this.tiles[l], f = y.getLatLon(this.radius);
-      this.getBasicTerrainType ? this.getBasicTerrainType(f.lat, f.lon) : this.getTerrainInfo(f.lat, f.lon);
-      const u = this.getTerrainInfo(f.lat, f.lon);
+      const f = this.tiles[l], u = f.getLatLon(this.radius);
+      this.getBasicTerrainType ? this.getBasicTerrainType(u.lat, u.lon) : this.getTerrainInfo(u.lat, u.lon);
+      const m = this.getTerrainInfo(u.lat, u.lon);
       let v = 0;
-      u.type === "mountain" ? v = 0.08 : u.type === "arctic" && u.elevation > 150 ? v = 0.06 : u.type === "desert" ? v = 0.03 : u.type === "forest" ? v = 0.02 : u.type === "city" && (v = 0.12);
-      const P = u.elevation / 255 * v * this.radius, x = y.centerPoint, S = Math.sqrt(x.x * x.x + x.y * x.y + x.z * x.z), z = x.x / S, T = x.y / S, F = x.z / S, I = new h.Vector3(z, T, F);
-      r.copy(I).multiplyScalar(this.radius + P), b.setFromUnitVectors(m, I), g.position.copy(r), g.quaternion.copy(b);
-      const D = M;
-      g.scale.set(D, 1, D), g.updateMatrix(), a.setMatrixAt(l, g.matrix);
-      const j = new h.Color(u.color);
-      p ? a.setColorAt(l, j) : a.instanceColor.setXYZ(l, j.r, j.g, j.b), y.mesh = a;
+      m.type === "mountain" ? v = 0.08 : m.type === "arctic" && m.elevation > 150 ? v = 0.06 : m.type === "desert" ? v = 0.03 : m.type === "forest" ? v = 0.02 : m.type === "city" && (v = 0.12);
+      const P = m.elevation / 255 * v * this.radius, b = f.centerPoint, S = Math.sqrt(b.x * b.x + b.y * b.y + b.z * b.z), L = b.x / S, T = b.y / S, $ = b.z / S, F = new c.Vector3(L, T, $);
+      r.copy(F).multiplyScalar(this.radius + P), x.setFromUnitVectors(M, F), g.position.copy(r), g.quaternion.copy(x);
+      const O = new c.Quaternion();
+      O.setFromAxisAngle(new c.Vector3(0, 1, 0), Math.PI), g.quaternion.multiply(O);
+      let I = y;
+      if (f.boundary && f.boundary.length > 0) {
+        const A = f.centerPoint, D = f.boundary[0], U = D.x - A.x, V = D.y - A.y, k = D.z - A.z;
+        I = Math.sqrt(U * U + V * V + k * k) * 0.98;
+      }
+      g.scale.set(I, 1, I), g.updateMatrix(), a.setMatrixAt(l, g.matrix), this.tileOriginalPositions[l] = r.clone();
+      const z = new c.Color(m.color);
+      d ? a.setColorAt(l, z) : a.instanceColor.setXYZ(l, z.r, z.g, z.b), f.mesh = a;
     }
-    a.instanceMatrix.needsUpdate = !0, p ? a.instanceColor && (a.instanceColor.needsUpdate = !0) : a.instanceColor.needsUpdate = !0, this.tileInstancedMesh = a, this.scene.add(a), console.log(`✅ InstancedMesh created with ${c} tiles.`);
+    a.instanceMatrix.needsUpdate = !0, d ? a.instanceColor && (a.instanceColor.needsUpdate = !0) : a.instanceColor.needsUpdate = !0, this.tileInstancedMesh = a, this.scene.add(a), console.log(`✅ InstancedMesh created with ${h} tiles.`);
   }
   async createPlanetMesh() {
-    const t = new h.SphereGeometry(this.radius, 256, 256), e = new h.TextureLoader(), [n, i] = await Promise.all([
-      e.loadAsync("map.png"),
-      e.loadAsync("equirectangle_projection.png")
+    const e = new c.SphereGeometry(this.radius, 256, 256), t = new c.TextureLoader(), [s, i] = await Promise.all([
+      t.loadAsync("map.png"),
+      t.loadAsync("equirectangle_projection.png")
     ]);
-    n.wrapS = h.RepeatWrapping, n.wrapT = h.RepeatWrapping, n.colorSpace = h.SRGBColorSpace, n.center.set(0.5, 0), i.wrapS = h.RepeatWrapping, i.wrapT = h.RepeatWrapping, i.colorSpace = h.LinearSRGBColorSpace, ((a) => {
-      const p = a.image, m = document.createElement("canvas");
-      m.width = p.width, m.height = p.height;
-      const g = m.getContext("2d");
-      g.drawImage(p, 0, 0);
-      const b = g.getImageData(0, 0, m.width, m.height);
-      for (let r = 0; r < b.data.length; r += 4)
-        b.data[r] = 255 - b.data[r], b.data[r + 1] = 255 - b.data[r + 1], b.data[r + 2] = 255 - b.data[r + 2];
-      g.putImageData(b, 0, 0), a.image = m, a.needsUpdate = !0;
+    s.wrapS = c.RepeatWrapping, s.wrapT = c.RepeatWrapping, s.colorSpace = c.SRGBColorSpace, s.center.set(0.5, 0), i.wrapS = c.RepeatWrapping, i.wrapT = c.RepeatWrapping, i.colorSpace = c.LinearSRGBColorSpace, ((a) => {
+      const d = a.image, M = document.createElement("canvas");
+      M.width = d.width, M.height = d.height;
+      const g = M.getContext("2d");
+      g.drawImage(d, 0, 0);
+      const x = g.getImageData(0, 0, M.width, M.height);
+      for (let r = 0; r < x.data.length; r += 4)
+        x.data[r] = 255 - x.data[r], x.data[r + 1] = 255 - x.data[r + 1], x.data[r + 2] = 255 - x.data[r + 2];
+      g.putImageData(x, 0, 0), a.image = M, a.needsUpdate = !0;
     })(i);
-    const s = new h.MeshStandardMaterial({
-      map: n,
+    const n = new c.MeshStandardMaterial({
+      map: s,
       displacementMap: i,
       displacementScale: this.radius * 0.05
-    }), c = t.attributes.uv;
-    for (let a = 0; a < c.count; a++)
-      c.setX(a, (c.getX(a) + 0.49) % 1);
-    c.needsUpdate = !0, this.planetMesh = new h.Mesh(t, s), this.planetMesh.renderOrder = 0, this.scene.add(this.planetMesh);
+    }), h = e.attributes.uv;
+    for (let a = 0; a < h.count; a++)
+      h.setX(a, (h.getX(a) + 0.49) % 1);
+    h.needsUpdate = !0, this.planetMesh = new c.Mesh(e, n), this.planetMesh.renderOrder = 0, this.scene.add(this.planetMesh);
   }
   createAtmosphereMesh() {
-    const e = new h.TextureLoader().load("clouds.png", () => {
+    const t = new c.TextureLoader().load("clouds.png", () => {
       console.log("☁️ Cloud texture loaded successfully");
-    }), n = new h.SphereGeometry(this.radius * 1.1, 64, 64), i = new h.MeshStandardMaterial({
-      map: e,
+    }), s = new c.SphereGeometry(this.radius * 1.1, 64, 64), i = new c.MeshStandardMaterial({
+      map: t,
       transparent: !0,
       opacity: 0.6,
-      side: h.DoubleSide,
+      side: c.DoubleSide,
       depthWrite: !1
     });
-    this.atmosphereMesh = new h.Mesh(n, i), this.atmosphereMesh.renderOrder = 999, this.scene.add(this.atmosphereMesh);
+    this.atmosphereMesh = new c.Mesh(s, i), this.atmosphereMesh.renderOrder = 999, this.scene.add(this.atmosphereMesh);
   }
   getTiles() {
     return this.tiles;
@@ -498,26 +505,59 @@ class k {
     return this.atmosphereMesh;
   }
   // Animate the atmosphere clouds
-  animateAtmosphere(t) {
+  animateAtmosphere(e) {
     this.atmosphereMesh;
   }
-  setTileColor(t, e) {
+  setTileColor(e, t) {
     if (this.tileInstancedMesh) {
-      const n = this.tileInstancedMesh, i = typeof n.setColorAt == "function", o = new h.Color(e);
-      i ? n.setColorAt(t, o) : n.instanceColor ? (n.instanceColor.setXYZ(t, o.r, o.g, o.b), n.instanceColor.needsUpdate = !0) : n.material.color.setHex(e), n.instanceColor && n.instanceColor.needsUpdate && n.instanceColor.needsUpdate, n.instanceMatrix && n.instanceMatrix.needsUpdate && n.instanceMatrix.needsUpdate;
+      const s = this.tileInstancedMesh, i = typeof s.setColorAt == "function", o = new c.Color(t);
+      i ? s.setColorAt(e, o) : s.instanceColor ? (s.instanceColor.setXYZ(e, o.r, o.g, o.b), s.instanceColor.needsUpdate = !0) : s.material.color.setHex(t), s.instanceColor && s.instanceColor.needsUpdate && s.instanceColor.needsUpdate, s.instanceMatrix && s.instanceMatrix.needsUpdate && s.instanceMatrix.needsUpdate;
       return;
     }
-    t >= 0 && t < this.tiles.length && this.tiles[t].mesh && this.tiles[t].mesh.material.color.setHex(e);
+    e >= 0 && e < this.tiles.length && this.tiles[e].mesh && this.tiles[e].mesh.material.color.setHex(t);
   }
   // Optional getter so external code can directly access the instanced mesh (if needed)
   getTileInstancedMesh() {
     return this.tileInstancedMesh;
   }
+  // Update tile visibility based on camera position - hide tiles on the back of the planet
+  updateTileVisibility(e) {
+    if (!this.tileInstancedMesh || !this.tiles) return;
+    this.scene.updateMatrixWorld();
+    const t = this.tileInstancedMesh, s = e.position.clone(), i = new c.Matrix4().copy(this.scene.matrixWorld).invert();
+    s.applyMatrix4(i);
+    const n = new c.Vector3(0, 0, 0).clone().sub(s).normalize();
+    for (let h = 0; h < this.tiles.length; h++) {
+      const a = this.tiles[h], g = new c.Vector3(a.centerPoint.x, a.centerPoint.y, a.centerPoint.z).clone().sub(s).dot(n), x = new c.Matrix4();
+      t.getMatrixAt(h, x);
+      const r = new c.Vector3(), p = new c.Vector3(), y = new c.Quaternion();
+      x.decompose(p, y, r);
+      let l = this.tileOriginalPositions[h] ? this.tileOriginalPositions[h].clone() : p.clone(), f = r.clone();
+      if (g > 0) {
+        const u = this.calculateTileScale(a);
+        f.set(u, 1, u);
+      } else
+        l.set(1e4, 1e4, 1e4), f.set(0.01, 0.01, 0.01);
+      if (!p.equals(l) || !r.equals(f)) {
+        const u = new c.Matrix4();
+        u.compose(l, y, f), t.setMatrixAt(h, u);
+      }
+    }
+    t.instanceMatrix.needsUpdate = !0;
+  }
+  // Helper method to calculate the original scale for a tile
+  calculateTileScale(e) {
+    if (e.boundary && e.boundary.length > 0) {
+      const t = e.centerPoint, s = e.boundary[0], i = s.x - t.x, o = s.y - t.y, n = s.z - t.z;
+      return Math.sqrt(i * i + o * o + n * n) * 0.98;
+    }
+    return 1;
+  }
   // Clear existing tiles and regenerate
-  regenerate(t, e, n) {
-    this.tileInstancedMesh && (this.scene.remove(this.tileInstancedMesh), this.tileInstancedMesh.geometry.dispose(), this.tileInstancedMesh.material.dispose(), this.tileInstancedMesh = void 0), this.clearPathLines(), this.clearTileLabels(), this.planetMesh && (this.scene.remove(this.planetMesh), this.planetMesh.geometry.dispose(), this.planetMesh.material.dispose(), this.planetMesh = void 0), this.atmosphereMesh && (this.scene.remove(this.atmosphereMesh), this.atmosphereMesh.geometry.dispose(), this.atmosphereMesh.material.dispose(), this.atmosphereMesh = void 0), this.tiles = [], this.tileLookup = {}, w.idCounter = 0, this.radius = t, this.generateHexasphere(t, e, n, this.viewMode);
+  regenerate(e, t, s) {
+    this.tileInstancedMesh && (this.scene.remove(this.tileInstancedMesh), this.tileInstancedMesh.geometry.dispose(), this.tileInstancedMesh.material.dispose(), this.tileInstancedMesh = void 0), this.tileOriginalPositions = [], this.clearPathLines(), this.clearTileLabels(), this.planetMesh && (this.scene.remove(this.planetMesh), this.planetMesh.geometry.dispose(), this.planetMesh.material.dispose(), this.planetMesh = void 0), this.atmosphereMesh && (this.scene.remove(this.atmosphereMesh), this.atmosphereMesh.geometry.dispose(), this.atmosphereMesh.material.dispose(), this.atmosphereMesh = void 0), this.tiles = [], this.tileLookup = {}, w.idCounter = 0, this.radius = e, this.generateHexasphere(e, t, s, this.viewMode);
   }
 }
 export {
-  k as HexaSphere
+  H as HexaSphere
 };

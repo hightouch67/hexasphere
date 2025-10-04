@@ -1,4 +1,4 @@
-const THREE = window.THREE;
+import * as THREE from 'three';
 import { HexaSphere } from './src/hexasphere';
 // Initialize Three.js scene
 const scene = new THREE.Scene();
